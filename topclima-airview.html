@@ -25,7 +25,7 @@ header h1{font-size:16px;font-weight:700;color:#0a5e46}
 .btn-primary{font-size:12px;font-weight:600;background:#0a5e46;color:#fff;border:none;padding:5px 16px;border-radius:5px;cursor:pointer;font-family:inherit}
 .btn-sm{font-size:11px;padding:4px 12px;border-radius:5px;border:1px solid #d5d2ca;background:#fff;cursor:pointer;font-family:inherit}
 .canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:8px;min-height:0}
-canvas{background:#f7f6f2;border-radius:6px;cursor:crosshair;width:100%;height:100%}
+canvas{background:#f7f6f2;border-radius:6px;cursor:crosshair;width:100%;height:100%;touch-action:none}
 .legend{display:none;align-items:center;gap:5px;padding:3px 16px 6px;flex-shrink:0}
 .legend span{font-size:9px;color:#999}
 .legend .bar{height:7px;flex:1;max-width:280px;border-radius:3px;background:linear-gradient(to right,#1040d0,#20a0d0,#40c840,#e0d020,#e07020,#d02020)}
@@ -198,17 +198,19 @@ const txt=label||'AC';
 if(wall==='left'||wall==='right'){cx.save();cx.translate(bx+bw/2,by+bh/2);cx.rotate(-Math.PI/2);cx.fillText(txt,0,0);cx.restore()}
 else cx.fillText(txt,bx+bw/2,by+bh/2);
 cx.textBaseline='alphabetic'}
-cv.addEventListener('mousedown',function(e){if(mode!=='editor')return;const r=cv.getBoundingClientRect(),mx=(e.clientX-r.left)*(CW/r.width),my=(e.clientY-r.top)*(CH/r.height);
+cv.addEventListener('pointerdown',function(e){e.preventDefault();cv.setPointerCapture(e.pointerId);if(mode!=='editor')return;const r=cv.getBoundingClientRect(),mx=(e.clientX-r.left)*(CW/r.width),my=(e.clientY-r.top)*(CH/r.height);
 if(tool==='room'){const mxM=snapM(pToM(mx-OX)),myM=snapM(pToM(my-OY));if(mxM>=0&&myM>=0){dragS={mx:mxM,my:myM};isDrag=true;dragE={mx:mxM,my:myM}}return}
 if(['couch','bed','ward','table'].includes(tool)){for(let i=furns.length-1;i>=0;i--){const f=furns[i],fx=OX+mToP(f.x),fy=OY+mToP(f.y);
 if(mx>fx&&mx<fx+mToP(f.w)&&my>fy&&my<fy+mToP(f.h)){dragFurn=i;dragOff={x:mx-fx,y:my-fy};return}}}});
-cv.addEventListener('mousemove',function(e){const r=cv.getBoundingClientRect();curX=(e.clientX-r.left)*(CW/r.width);curY=(e.clientY-r.top)*(CH/r.height);
+cv.addEventListener('pointermove',function(e){e.preventDefault();const r=cv.getBoundingClientRect();curX=(e.clientX-r.left)*(CW/r.width);curY=(e.clientY-r.top)*(CH/r.height);
 if(isDrag&&mode==='editor')dragE={mx:Math.max(0,snapM(pToM(curX-OX))),my:Math.max(0,snapM(pToM(curY-OY)))};
 if(dragFurn>=0&&mode==='editor'){furns[dragFurn].x=snapM2(pToM(curX-dragOff.x-OX));furns[dragFurn].y=snapM2(pToM(curY-dragOff.y-OY))}});
-cv.addEventListener('mouseup',function(){if(isDrag&&mode==='editor'&&dragS&&dragE){const w=Math.abs(dragE.mx-dragS.mx),h=Math.abs(dragE.my-dragS.my);
+cv.addEventListener('pointerup',function(e){const wasDrag=isDrag&&dragS&&dragE&&(Math.abs(dragE.mx-dragS.mx)>=.5||Math.abs(dragE.my-dragS.my)>=.5);
+if(isDrag&&mode==='editor'&&dragS&&dragE){const w=Math.abs(dragE.mx-dragS.mx),h=Math.abs(dragE.my-dragS.my);
 if(w>=.5&&h>=.5){rooms.push({x:Math.min(dragS.mx,dragE.mx),y:Math.min(dragS.my,dragE.my),w,h,temp:26});
 document.getElementById('statusMsg').textContent='Izba #'+rooms.length+' pridaná';clickGuard=Date.now()}}
-isDrag=false;dragS=null;dragE=null;dragFurn=-1;chkRdy()});
+isDrag=false;dragS=null;dragE=null;dragFurn=-1;chkRdy();
+if(!wasDrag&&(e.pointerType==='touch'||e.pointerType==='pen')){const r=cv.getBoundingClientRect(),mx=(e.clientX-r.left)*(CW/r.width),my=(e.clientY-r.top)*(CH/r.height);cv.dispatchEvent(Object.assign(new MouseEvent('click',{bubbles:true,clientX:e.clientX,clientY:e.clientY})))}});
 cv.addEventListener('click',function(e){const r=cv.getBoundingClientRect(),mx=(e.clientX-r.left)*(CW/r.width),my=(e.clientY-r.top)*(CH/r.height);
 if(mode==='editor'){if(Date.now()-clickGuard<250)return;
 if(tool!=='room'&&tryDeleteAt(mx,my)){chkRdy();return}
@@ -237,7 +239,7 @@ if(['couch','bed','ward','table'].includes(tool)&&rooms.length&&ptInAnyRoom(mx,m
 furns.push({x:snapM2(pToM(mx-OX)-fd.w/2),y:snapM2(pToM(my-OY)-fd.h/2),w:fd.w,h:fd.h,l:fd.l,d:fd.d,sol:fd.sol});
 document.getElementById('statusMsg').textContent=fd.l+' pridaný';return}}
 });
-cv.addEventListener('mouseleave',function(){curX=-1;curY=-1});
+cv.addEventListener('pointerleave',function(){curX=-1;curY=-1});
 document.getElementById('clearBtn').onclick=function(){rooms=[];wins=[];furns=[];doors=[];acUnits=[];southSide=null;westSide=null;setTool('room');chkRdy()};
 /* SIMULATION */
 const SC=.1;let ST,STb,sgW,sgH,sExtT,sExtK,sAir,sFurS,sFurE,sWallH,sWallV;
