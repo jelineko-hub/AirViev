@@ -153,12 +153,17 @@ let ax,ay;if(u.wall==='top'){ax=rx+u.pos*rw;ay=ry}else if(u.wall==='bottom'){ax=
 if(Math.sqrt((mx-ax)**2+(my-ay)**2)<35){acUnits.splice(i,1);document.getElementById('statusMsg').textContent='Klima #'+(i+1)+' vymazaná';chkRdy();return true}}
 return false}
 function drawGrid(){const GW=30,GH=20;cx.fillStyle='#f7f6f2';cx.fillRect(-vX,-vY,CW,CH);
-cx.strokeStyle='rgba(0,0,0,0.12)';cx.lineWidth=.5;for(let m=0;m<=GW;m+=GRID){cx.beginPath();cx.moveTo(OX+m*PPM,OY);cx.lineTo(OX+m*PPM,OY+GH*PPM);cx.stroke()}
-for(let m=0;m<=GH;m+=GRID){cx.beginPath();cx.moveTo(OX,OY+m*PPM);cx.lineTo(OX+GW*PPM,OY+m*PPM);cx.stroke()}
-cx.strokeStyle='rgba(0,0,0,0.25)';cx.lineWidth=.7;for(let m=0;m<=GW;m+=.5){cx.beginPath();cx.moveTo(OX+m*PPM,OY);cx.lineTo(OX+m*PPM,OY+GH*PPM);cx.stroke()}
-for(let m=0;m<=GH;m+=.5){cx.beginPath();cx.moveTo(OX,OY+m*PPM);cx.lineTo(OX+GW*PPM,OY+m*PPM);cx.stroke()}
-cx.strokeStyle='rgba(0,0,0,0.35)';cx.lineWidth=1;for(let m=0;m<=GW;m+=1){cx.beginPath();cx.moveTo(OX+m*PPM,OY);cx.lineTo(OX+m*PPM,OY+GH*PPM);cx.stroke()}
-for(let m=0;m<=GH;m+=1){cx.beginPath();cx.moveTo(OX,OY+m*PPM);cx.lineTo(OX+GW*PPM,OY+m*PPM);cx.stroke()}
+const vx0=Math.max(0,Math.floor((-vX-OX)/PPM/GRID)*GRID),vx1=Math.min(GW,Math.ceil((CW-vX-OX)/PPM/GRID)*GRID);
+const vy0=Math.max(0,Math.floor((-vY-OY)/PPM/GRID)*GRID),vy1=Math.min(GH,Math.ceil((CH-vY-OY)/PPM/GRID)*GRID);
+cx.strokeStyle='rgba(0,0,0,0.12)';cx.lineWidth=.5;cx.beginPath();
+for(let m=vx0;m<=vx1;m+=GRID){cx.moveTo(OX+m*PPM,OY+vy0*PPM);cx.lineTo(OX+m*PPM,OY+vy1*PPM)}
+for(let m=vy0;m<=vy1;m+=GRID){cx.moveTo(OX+vx0*PPM,OY+m*PPM);cx.lineTo(OX+vx1*PPM,OY+m*PPM)}cx.stroke();
+cx.strokeStyle='rgba(0,0,0,0.25)';cx.lineWidth=.7;cx.beginPath();
+for(let m=0;m<=GW;m+=.5){cx.moveTo(OX+m*PPM,OY);cx.lineTo(OX+m*PPM,OY+GH*PPM)}
+for(let m=0;m<=GH;m+=.5){cx.moveTo(OX,OY+m*PPM);cx.lineTo(OX+GW*PPM,OY+m*PPM)}cx.stroke();
+cx.strokeStyle='rgba(0,0,0,0.35)';cx.lineWidth=1;cx.beginPath();
+for(let m=0;m<=GW;m+=1){cx.moveTo(OX+m*PPM,OY);cx.lineTo(OX+m*PPM,OY+GH*PPM)}
+for(let m=0;m<=GH;m+=1){cx.moveTo(OX,OY+m*PPM);cx.lineTo(OX+GW*PPM,OY+m*PPM)}cx.stroke();
 cx.fillStyle='#777';cx.font='10px DM Sans,sans-serif';cx.textAlign='center';for(let m=0;m<=GW;m+=1)cx.fillText(m+'m',OX+m*PPM,OY-8);
 cx.textAlign='right';for(let m=0;m<=GH;m+=1)cx.fillText(m+'m',OX-6,OY+m*PPM+3)}
 function drawEditor(){cx.clearRect(0,0,CW,CH);cx.save();cx.translate(vX,vY);drawGrid();
@@ -460,7 +465,7 @@ if(curX>sRX&&curX<sRX+sRW&&curY>sRY&&curY<sRY+sRH){const gx=Math.floor((curX-sRX
 if(gx>=0&&gx<sgW&&gy>=0&&gy<sgH&&sAir[gy*sgW+gx]){const sol=sFurS[gy*sgW+gx],tmp2=sol?null:ST[sid(gx,gy)],label=tmp2!==null?tmp2.toFixed(1)+'°C':'—';
 cx.beginPath();cx.arc(curX,curY,3,0,Math.PI*2);cx.fillStyle='rgba(255,255,255,.9)';cx.fill();cx.strokeStyle='rgba(0,0,0,.5)';cx.lineWidth=1;cx.stroke();
 const tw=cx.measureText(label).width,bw=tw+12,bh=20;let bx=curX-bw/2,by=curY-32;if(bx<sRX)bx=sRX;if(by<sRY)by=curY+12;
-cx.fillStyle='rgba(0,0,0,.8)';cx.beginPath();cx.roundRect(bx,by,bw,bh,4);cx.fill();cx.fillStyle='#fff';cx.font='bold 11px DM Sans';cx.textAlign='center';cx.textBaseline='middle';cx.fillText(label,bx+bw/2,by+bh/2);cx.textBaseline='alphabetic'}}}cx.restore()}
+cx.fillStyle='rgba(0,0,0,.8)';cx.beginPath();cx.roundRect(bx,by,bw,bh,4);cx.fill();cx.fillStyle='#fff';cx.font='bold 11px DM Sans';cx.textAlign='center';cx.textBaseline='middle';cx.fillText(label,bx+bw/2,by+bh/2);cx.textBaseline='alphabetic'}}cx.restore()}
 function switchToSim(){mode='sim';initSim();document.getElementById('modeLabel').textContent='Simulácia';document.getElementById('statusMsg').textContent='Simulácia beží';
 document.getElementById('edToolbar').style.display='none';document.getElementById('simToolbar').style.display='flex';document.getElementById('tuneRow').style.display='flex';
 document.getElementById('unitCards').style.display='flex';document.getElementById('infoBar').style.display='none';document.getElementById('simLeg').style.display='flex';document.getElementById('simBtn').style.display='none';document.getElementById('editBtn').style.display='';document.getElementById('clearBtn').style.display='none'}
