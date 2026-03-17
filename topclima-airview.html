@@ -210,7 +210,7 @@ if(isDrag&&mode==='editor'&&dragS&&dragE){const w=Math.abs(dragE.mx-dragS.mx),h=
 if(w>=.5&&h>=.5){rooms.push({x:Math.min(dragS.mx,dragE.mx),y:Math.min(dragS.my,dragE.my),w,h,temp:26});
 document.getElementById('statusMsg').textContent='Izba #'+rooms.length+' pridaná';clickGuard=Date.now()}}
 isDrag=false;dragS=null;dragE=null;dragFurn=-1;chkRdy();
-if(!wasDrag&&(e.pointerType==='touch'||e.pointerType==='pen')){const r=cv.getBoundingClientRect(),mx=(e.clientX-r.left)*(CW/r.width),my=(e.clientY-r.top)*(CH/r.height);cv.dispatchEvent(Object.assign(new MouseEvent('click',{bubbles:true,clientX:e.clientX,clientY:e.clientY})))}});
+if(!wasDrag&&e.pointerType==='touch'){const r=cv.getBoundingClientRect(),mx=(e.clientX-r.left)*(CW/r.width),my=(e.clientY-r.top)*(CH/r.height);cv.dispatchEvent(Object.assign(new MouseEvent('click',{bubbles:true,clientX:e.clientX,clientY:e.clientY})))}});
 cv.addEventListener('click',function(e){const r=cv.getBoundingClientRect(),mx=(e.clientX-r.left)*(CW/r.width),my=(e.clientY-r.top)*(CH/r.height);
 if(mode==='editor'){if(Date.now()-clickGuard<250)return;
 if(tool!=='room'&&tryDeleteAt(mx,my)){chkRdy();return}
