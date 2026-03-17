@@ -47,7 +47,12 @@ canvas{background:#f7f6f2;border-radius:6px;cursor:crosshair;width:100%;height:1
 <h1>TopClima AirView</h1>
 <span class="mode-label" id="modeLabel">Editor</span>
 <span id="statusMsg">Nakresli izbu ťahaním myši</span>
-<div style="margin-left:auto;display:flex;gap:6px">
+<div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+<button class="btn-sm" id="saveBtn" title="Uložiť do prehliadača">💾 Uložiť</button>
+<button class="btn-sm" id="loadBtn" title="Načítať z prehliadača">📂 Načítať</button>
+<button class="btn-sm" id="exportBtn" title="Stiahnuť ako JSON súbor">⬇ Export</button>
+<label class="btn-sm" style="cursor:pointer" title="Načítať zo súboru">⬆ Import<input type="file" id="importFile" accept=".json" style="display:none"></label>
+<div style="width:1px;height:20px;background:#ddd;margin:0 2px"></div>
 <button class="btn-primary" id="simBtn" style="display:none">Simulovať →</button>
 <button class="btn-sm" id="editBtn" style="display:none">← Upraviť</button>
 <button class="btn-sm" id="clearBtn">Vymazať</button>
@@ -209,38 +214,47 @@ cv.addEventListener('pointerup',function(e){const wasDrag=isDrag&&dragS&&dragE&&
 if(isDrag&&mode==='editor'&&dragS&&dragE){const w=Math.abs(dragE.mx-dragS.mx),h=Math.abs(dragE.my-dragS.my);
 if(w>=.5&&h>=.5){rooms.push({x:Math.min(dragS.mx,dragE.mx),y:Math.min(dragS.my,dragE.my),w,h,temp:26});
 document.getElementById('statusMsg').textContent='Izba #'+rooms.length+' pridaná';clickGuard=Date.now()}}
-isDrag=false;dragS=null;dragE=null;dragFurn=-1;chkRdy();
+isDrag=false;dragS=null;dragE=null;dragFurn=-1;chkRdy();if(rooms.length)autoSave();
 if(!wasDrag&&e.pointerType==='touch'){const r=cv.getBoundingClientRect(),mx=(e.clientX-r.left)*(CW/r.width),my=(e.clientY-r.top)*(CH/r.height);cv.dispatchEvent(Object.assign(new MouseEvent('click',{bubbles:true,clientX:e.clientX,clientY:e.clientY})))}});
 cv.addEventListener('click',function(e){const r=cv.getBoundingClientRect(),mx=(e.clientX-r.left)*(CW/r.width),my=(e.clientY-r.top)*(CH/r.height);
 if(mode==='editor'){if(Date.now()-clickGuard<250)return;
-if(tool!=='room'&&tryDeleteAt(mx,my)){chkRdy();return}
+if(tool!=='room'&&tryDeleteAt(mx,my)){chkRdy();autoSave();return}
 if(tool==='room'){for(let i=rooms.length-1;i>=0;i--){const r=rooms[i],rx=OX+mToP(r.x),ry=OY+mToP(r.y),rw=mToP(r.w),rh=mToP(r.h);
 if(mx>rx&&mx<rx+rw&&my>ry&&my<ry+rh){
 wins=wins.filter(w=>w.ri!==i);doors=doors.filter(d=>d.ri!==i);acUnits=acUnits.filter(u=>u.ri!==i);
 wins.forEach(w=>{if(w.ri>i)w.ri--});doors.forEach(d=>{if(d.ri>i)d.ri--});acUnits.forEach(u=>{if(u.ri>i)u.ri--});
-rooms.splice(i,1);document.getElementById('statusMsg').textContent='Izba vymazaná';chkRdy();return}}}
-if(tool==='win'&&rooms.length){const w=wallAt(mx,my);if(w){wins.push({ri:w.ri,wall:w.wall,pos:w.pos});document.getElementById('statusMsg').textContent='Okno pridané';chkRdy()}return}
+rooms.splice(i,1);document.getElementById('statusMsg').textContent='Izba vymazaná';chkRdy();autoSave();return}}}
+if(tool==='win'&&rooms.length){const w=wallAt(mx,my);if(w){wins.push({ri:w.ri,wall:w.wall,pos:w.pos});document.getElementById('statusMsg').textContent='Okno pridané';chkRdy();autoSave()}return}
 if((tool==='south'||tool==='west')&&rooms.length){const bb=allBB(),bx=OX+mToP(bb.x),by=OY+mToP(bb.y),bw=mToP(bb.w),bh=mToP(bb.h);
 const cx2=bx+bw/2,cy2=by+bh/2,dx2=mx-cx2,dy2=my-cy2;
 let side;if(Math.abs(dx2)>Math.abs(dy2)){side=dx2<0?'left':'right'}else{side=dy2<0?'top':'bottom'}
 const names={top:'hore',bottom:'dole',left:'vľavo',right:'vpravo'};
 if(tool==='south'){if(side===westSide){document.getElementById('statusMsg').textContent='Táto strana je už Západ!';return}
-southSide=southSide===side?null:side;document.getElementById('statusMsg').textContent=southSide?'Juh ☀ = '+names[southSide]:'Juh zrušený'}
+southSide=southSide===side?null:side;document.getElementById('statusMsg').textContent=southSide?'Juh ☀ = '+names[southSide]:'Juh zrušený';autoSave()}
 else{if(side===southSide){document.getElementById('statusMsg').textContent='Táto strana je už Juh!';return}
-westSide=westSide===side?null:side;document.getElementById('statusMsg').textContent=westSide?'Západ ☀ = '+names[westSide]:'Západ zrušený'}return}
+westSide=westSide===side?null:side;document.getElementById('statusMsg').textContent=westSide?'Západ ☀ = '+names[westSide]:'Západ zrušený';autoSave()}return}
 if(tool==='temp'&&rooms.length){for(let i=rooms.length-1;i>=0;i--){const r=rooms[i],rx=OX+mToP(r.x),ry=OY+mToP(r.y),rw=mToP(r.w),rh=mToP(r.h);
 if(mx>rx&&mx<rx+rw&&my>ry&&my<ry+rh){const temps=[22,24,26,28,30,32,34];const ci=temps.indexOf(r.temp||26);r.temp=temps[(ci+1)%temps.length];
-document.getElementById('statusMsg').textContent='Izba #'+(i+1)+': '+r.temp+'°C';return}}return}
-if(tool==='door'&&rooms.length){const w=wallAt(mx,my);if(w&&isSharedWall(w.ri,w.wall)){doors.push({ri:w.ri,wall:w.wall,pos:w.pos});document.getElementById('statusMsg').textContent='Dvere pridané'}else if(w){document.getElementById('statusMsg').textContent='Dvere len na steny medzi izbami!'}return}
+document.getElementById('statusMsg').textContent='Izba #'+(i+1)+': '+r.temp+'°C';autoSave();return}}return}
+if(tool==='door'&&rooms.length){const w=wallAt(mx,my);if(w&&isSharedWall(w.ri,w.wall)){doors.push({ri:w.ri,wall:w.wall,pos:w.pos});document.getElementById('statusMsg').textContent='Dvere pridané';autoSave()}else if(w){document.getElementById('statusMsg').textContent='Dvere len na steny medzi izbami!'}return}
 if(tool==='ac'&&rooms.length){const w=wallAt(mx,my);if(w){
 acUnits.push({ri:w.ri,wall:w.wall,pos:w.pos,model:1,mode:1,on:true});
-document.getElementById('statusMsg').textContent='Klima #'+acUnits.length+' umiestnená!';chkRdy()}return}
+document.getElementById('statusMsg').textContent='Klima #'+acUnits.length+' umiestnená!';chkRdy();autoSave()}return}
 if(['couch','bed','ward','table'].includes(tool)&&rooms.length&&ptInAnyRoom(mx,my)){const fd=furDefs[tool];
 furns.push({x:snapM2(pToM(mx-OX)-fd.w/2),y:snapM2(pToM(my-OY)-fd.h/2),w:fd.w,h:fd.h,l:fd.l,d:fd.d,sol:fd.sol});
-document.getElementById('statusMsg').textContent=fd.l+' pridaný';return}}
+document.getElementById('statusMsg').textContent=fd.l+' pridaný';autoSave();return}}
 });
 cv.addEventListener('pointerleave',function(){curX=-1;curY=-1});
 document.getElementById('clearBtn').onclick=function(){rooms=[];wins=[];furns=[];doors=[];acUnits=[];southSide=null;westSide=null;setTool('room');chkRdy()};
+/* SAVE / LOAD */
+const LS_KEY='airview_v1';
+function getState(){return{rooms,wins,furns,doors,acUnits,southSide,westSide,insul:document.getElementById('insul').value,extS:document.getElementById('extS').value,extW:document.getElementById('extW').value}}
+function applyState(s){rooms=s.rooms||[];wins=s.wins||[];furns=s.furns||[];doors=s.doors||[];acUnits=s.acUnits||[];southSide=s.southSide||null;westSide=s.westSide||null;if(s.insul)document.getElementById('insul').value=s.insul;if(s.extS)document.getElementById('extS').value=s.extS;if(s.extW)document.getElementById('extW').value=s.extW;chkRdy()}
+function autoSave(){try{localStorage.setItem(LS_KEY,JSON.stringify(getState()))}catch(e){}}
+document.getElementById('saveBtn').onclick=function(){autoSave();document.getElementById('statusMsg').textContent='Uložené ✓'};
+document.getElementById('loadBtn').onclick=function(){const d=localStorage.getItem(LS_KEY);if(!d){document.getElementById('statusMsg').textContent='Nič uložené';return}applyState(JSON.parse(d));document.getElementById('statusMsg').textContent='Načítané ✓'};
+document.getElementById('exportBtn').onclick=function(){const a=document.createElement('a');a.href='data:application/json,'+encodeURIComponent(JSON.stringify(getState(),null,2));a.download='airview-podorys.json';a.click();document.getElementById('statusMsg').textContent='Exportované ✓'};
+document.getElementById('importFile').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=function(ev){try{applyState(JSON.parse(ev.target.result));document.getElementById('statusMsg').textContent='Importované ✓'}catch(e){document.getElementById('statusMsg').textContent='Chyba: neplatný súbor'}};r.readAsText(f);this.value=''};
 /* SIMULATION */
 const SC=.1;let ST,STb,sgW,sgH,sExtT,sExtK,sAir,sFurS,sFurE,sWallH,sWallV;
 let uInv=[],uSmR=[],uOutT=[];
