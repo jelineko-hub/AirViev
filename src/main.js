@@ -1,4 +1,3 @@
-import './style.css';
 import { canvas, scene, view, editor, sim, dom, cacheDom } from './state.js';
 import { drawEditor, drawSim } from './renderer.js';
 import { initSim, emitParticles, updateParticles, updateGrid } from './simulation.js';
