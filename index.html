@@ -4,10 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>TopClima AirView</title>
+<link rel="stylesheet" href="./src/style.css">
 </head>
 <body>
 <header>
-<h1>TopClima AirView <span style="font-size:10px;font-weight:400;color:#999">v2026.03.18-002</span></h1>
+<h1>TopClima AirView <span style="font-size:10px;font-weight:400;color:#999">v2026.03.18-003</span></h1>
 <span class="mode-label" id="modeLabel">Editor</span>
 <span id="statusMsg">Nakresli izbu ťahaním myši</span>
 <div class="group" style="margin-left:auto"><label>Zoom</label><input type="range" id="zoomSlider" min="30" max="400" value="100" style="width:80px"><span class="val" id="zoomVal">1.0×</span></div>
@@ -65,6 +66,6 @@
 <div class="info-bar" id="infoBar"></div>
 <div class="canvas-wrap"><canvas id="c"></canvas></div>
 <div class="legend" id="simLeg"><span>16°C</span><div class="bar"></div><span>30°C</span></div>
-<script type="module" src="/src/main.js"></script>
+<script type="module" src="./src/main.js"></script>
 </body>
 </html>
