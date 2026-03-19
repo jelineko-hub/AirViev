@@ -1,10 +1,11 @@
-import { canvas, scene, view, editor, sim, dom, cacheDom } from './state.js';
+import { canvas, scene, view, editor, sim, dom, cacheDom, AC_MODELS } from './state.js';
 import { drawEditor, drawSim } from './renderer.js';
 import { initSim, emitParticles, updateParticles, updateGrid } from './simulation.js';
 import { setupEditorEvents } from './editor.js';
 import { autoSave, manualSave, load, exportJSON, importJSON } from './storage.js';
 import { setTool, switchToSim, switchToEditor, checkReady, syncZoomSlider } from './ui.js';
-import { detectRooms } from './utils.js';
+import { detectRooms, allBoundingBox } from './utils.js';
+import { generateReport } from './report.js';
 
 // ── Initialize canvas ──
 
@@ -58,12 +59,16 @@ function initUI() {
     if (sim.done) return;
     sim.running = !sim.running;
     this.textContent = sim.running ? 'Pauza' : 'Štart';
+    dom.reportBtn.style.display = (!sim.running && sim.elapsed > 0) ? '' : 'none';
   };
 
   dom.resetBtn.onclick = () => {
     sim.running = false;
+    dom.reportBtn.style.display = 'none';
     initSim();
   };
+
+  dom.reportBtn.onclick = () => generateReport();
 
   dom.zoomSlider.oninput = function() {
     const nz = +this.value / 100;

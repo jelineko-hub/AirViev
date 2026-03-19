@@ -145,6 +145,7 @@ export function cacheDom() {
   dom.clock = document.getElementById('ck');
   dom.startBtn = document.getElementById('sB');
   dom.resetBtn = document.getElementById('rBs');
+  dom.reportBtn = document.getElementById('reportBtn');
   dom.targetTemp = document.getElementById('aT');
   dom.simLength = document.getElementById('sL');
   dom.spreadWidth = document.getElementById('sw');

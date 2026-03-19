@@ -464,6 +464,31 @@ function drawSimHUD(ctx, cpx) {
   }
 }
 
+function drawTempLabels(ctx) {
+  const { gridW, gridH, cellSize, bboxX, bboxY } = sim;
+  const step = Math.round(1 / cellSize); // cells per meter
+  ctx.font = '9px DM Sans';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (let gy = Math.floor(step / 2); gy < gridH; gy += step) {
+    for (let gx = Math.floor(step / 2); gx < gridW; gx += step) {
+      const i = gy * gridW + gx;
+      if (!sim.airMap[i] || sim.furnitureSolid[i]) continue;
+      const t = sim.tempGrid[i];
+      const px = sim.renderX + (gx + 0.5) * cellSize * PPM;
+      const py = sim.renderY + (gy + 0.5) * cellSize * PPM;
+      const label = t.toFixed(1) + '°';
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = 'rgba(0,0,0,.45)';
+      ctx.beginPath();
+      ctx.roundRect(px - tw / 2 - 3, py - 6, tw + 6, 12, 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.fillText(label, px, py);
+    }
+  }
+}
+
 export function drawSim() {
   const ctx = canvas.ctx;
   const cpx = sim.cellSize * PPM;
@@ -479,6 +504,7 @@ export function drawSim() {
   drawSceneOverlays(ctx);
   drawParticles(ctx);
   drawAcCones(ctx);
+  if (!sim.running && sim.elapsed > 0) drawTempLabels(ctx);
   drawSimHUD(ctx, cpx);
 
   ctx.restore();

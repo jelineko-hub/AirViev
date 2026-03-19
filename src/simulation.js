@@ -666,5 +666,6 @@ export function updateGrid() {
     sim.done = true;
     sim.running = false;
     dom.startBtn.textContent = 'Hotovo';
+    if (dom.reportBtn) dom.reportBtn.style.display = '';
   }
 }
