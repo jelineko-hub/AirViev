@@ -351,6 +351,8 @@ export function initSim() {
   sim.elapsed = 0;
   sim.done = false;
   sim.running = false;
+  sim.snapshots = [];
+  sim.lastSnapTime = -1;
 
   dom.clock.textContent = '00:00';
   dom.startBtn.textContent = 'Štart';
@@ -666,6 +668,5 @@ export function updateGrid() {
     sim.done = true;
     sim.running = false;
     dom.startBtn.textContent = 'Hotovo';
-    if (dom.reportBtn) dom.reportBtn.style.display = '';
   }
 }

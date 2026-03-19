@@ -103,6 +103,8 @@ export const sim = {
   running: false,
   elapsed: 0,           // seconds elapsed
   done: false,
+  snapshots: [],        // [{time, imgData}] captured at intervals
+  lastSnapTime: -1,     // last snapshot elapsed time
 };
 
 // ── Particle pool ──
@@ -146,6 +148,7 @@ export function cacheDom() {
   dom.startBtn = document.getElementById('sB');
   dom.resetBtn = document.getElementById('rBs');
   dom.reportBtn = document.getElementById('reportBtn');
+  dom.snapInterval = document.getElementById('snapInterval');
   dom.targetTemp = document.getElementById('aT');
   dom.simLength = document.getElementById('sL');
   dom.spreadWidth = document.getElementById('sw');

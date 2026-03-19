@@ -59,12 +59,10 @@ function initUI() {
     if (sim.done) return;
     sim.running = !sim.running;
     this.textContent = sim.running ? 'Pauza' : 'Štart';
-    dom.reportBtn.style.display = (!sim.running && sim.elapsed > 0) ? '' : 'none';
   };
 
   dom.resetBtn.onclick = () => {
     sim.running = false;
-    dom.reportBtn.style.display = 'none';
     initSim();
   };
 
@@ -87,6 +85,25 @@ function initUI() {
   dom.targetMult.oninput = function() { dom.targetMultVal.textContent = (+this.value / 100).toFixed(1) + 'x'; };
 }
 
+// ── Snapshot capture ──
+
+function captureSnapshot() {
+  if (!sim.running || sim.elapsed === 0) return;
+  const interval = (+dom.snapInterval.value) * 60; // seconds
+  const nextSnapTime = (sim.lastSnapTime < 0) ? interval : sim.lastSnapTime + interval;
+  if (sim.elapsed >= nextSnapTime) {
+    const mins = Math.floor(sim.elapsed / 60);
+    const secs = sim.elapsed % 60;
+    const timeLabel = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+    sim.snapshots.push({
+      time: sim.elapsed,
+      timeLabel,
+      imgData: canvas.el.toDataURL('image/png'),
+    });
+    sim.lastSnapTime = sim.elapsed;
+  }
+}
+
 // ── Main loop ──
 
 function loop() {
@@ -101,6 +118,7 @@ function loop() {
     updateParticles();
     updateGrid();
     drawSim();
+    captureSnapshot();
   }
   requestAnimationFrame(loop);
 }
