@@ -353,6 +353,12 @@ export function initSim() {
   sim.running = false;
   sim.snapshots = [];
   sim.lastSnapTime = -1;
+  // Compute initial average temperature
+  let tempSum = 0, tempCnt = 0;
+  for (let i = 0, len = sim.gridW * sim.gridH; i < len; i++) {
+    if (sim.airMap[i] && !sim.furnitureSolid[i]) { tempSum += sim.tempGrid[i]; tempCnt++; }
+  }
+  sim.initialAvgTemp = tempCnt > 0 ? tempSum / tempCnt : 26;
 
   dom.clock.textContent = '00:00';
   dom.startBtn.textContent = 'Štart';

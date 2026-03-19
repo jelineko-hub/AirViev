@@ -1,19 +1,18 @@
 import { canvas, scene, sim, dom, AC_MODELS, view } from './state.js';
-import { allBoundingBox } from './utils.js';
-import { drawSim, drawTempLabels } from './renderer.js';
+import { allBoundingBox, cropSimArea } from './utils.js';
+import { drawTempLabels } from './renderer.js';
 
 const SCALE_HTML = `<div class="temp-scale"><span>16°C</span><div class="scale-bar"></div><span>30°C</span></div>`;
 
 export function generateReport() {
-  // Capture current canvas with temp labels
+  // Capture current canvas with temp labels, cropped
   const ctx = canvas.ctx;
   ctx.save();
   ctx.translate(view.x, view.y);
   ctx.scale(view.zoom, view.zoom);
   drawTempLabels(ctx);
   ctx.restore();
-  const finalImg = canvas.el.toDataURL('image/png');
-  // Redraw without labels on next frame
+  const finalImg = cropSimArea();
 
   // Gather data
   const bb = allBoundingBox();
@@ -25,6 +24,16 @@ export function generateReport() {
   const insulation = insLabels[dom.insulation.value] || dom.insulation.value;
   const extSouth = dom.extSouth.value;
   const extWest = dom.extWest.value;
+  const initialTemp = sim.initialAvgTemp ? sim.initialAvgTemp.toFixed(1) : '—';
+
+  // Current average temperature
+  let curSum = 0, curCnt = 0;
+  if (sim.tempGrid && sim.airMap) {
+    for (let i = 0, len = sim.gridW * sim.gridH; i < len; i++) {
+      if (sim.airMap[i] && !sim.furnitureSolid[i]) { curSum += sim.tempGrid[i]; curCnt++; }
+    }
+  }
+  const currentAvgTemp = curCnt > 0 ? (curSum / curCnt).toFixed(1) : '—';
 
   // Room temperatures from simulation
   const roomRows = scene.rooms.map((r, i) => {
@@ -69,7 +78,6 @@ export function generateReport() {
         <div class="snap-body"><img class="snap-img" src="${s.imgData}" alt="${label}">${SCALE_HTML}</div>
       </div>`;
     }).join('');
-    // Final state
     const finalMins = Math.floor(sim.elapsed / 60);
     const finalLabel = sim.done ? `po ${finalMins} minútach (koniec)` : `po ${finalMins} minútach (aktuálny stav)`;
     snapshotsHtml = `
@@ -117,6 +125,8 @@ export function generateReport() {
   .temp-scale { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: #f9f8f5; border-top: 1px solid #e8e5dd; }
   .temp-scale span { font-size: 10px; color: #888; white-space: nowrap; }
   .scale-bar { height: 8px; flex: 1; border-radius: 4px; background: linear-gradient(to right, #1040d0, #20a0d0, #40c840, #e0d020, #e07020, #d02020); }
+  .temp-summary { font-size: 16px; font-weight: 600; color: #0a5e46; padding: 10px 0; margin-bottom: 6px; }
+  .temp-summary .temp-val { font-size: 20px; }
   table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 8px; }
   th { text-align: left; font-weight: 600; color: #666; padding: 4px 8px; border-bottom: 2px solid #e0ddd5; }
   td { padding: 4px 8px; border-bottom: 1px solid #eee; }
@@ -136,6 +146,12 @@ export function generateReport() {
 <p class="subtitle">Vygenerované: ${dateStr}</p>
 
 <button class="no-print" onclick="window.print()" style="font-family:inherit;font-size:12px;padding:6px 16px;background:#0a5e46;color:#fff;border:none;border-radius:5px;cursor:pointer;margin-bottom:16px">Tlačiť / Uložiť PDF</button>
+
+<div class="temp-summary">
+  Počiatočná priemerná teplota: <span class="temp-val">${initialTemp}°C</span>
+  &nbsp;→&nbsp; Aktuálna: <span class="temp-val">${currentAvgTemp}°C</span>
+  &nbsp; (cieľ: ${targetTemp}°C)
+</div>
 
 <div class="section">
   <h2>Parametre simulácie</h2>

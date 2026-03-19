@@ -105,6 +105,7 @@ export const sim = {
   done: false,
   snapshots: [],        // [{time, imgData}] captured at intervals
   lastSnapTime: -1,     // last snapshot elapsed time
+  initialAvgTemp: 0,    // average starting temperature across all rooms
 };
 
 // ── Particle pool ──

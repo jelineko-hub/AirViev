@@ -4,7 +4,7 @@ import { initSim, emitParticles, updateParticles, updateGrid } from './simulatio
 import { setupEditorEvents } from './editor.js';
 import { autoSave, manualSave, load, exportJSON, importJSON } from './storage.js';
 import { setTool, switchToSim, switchToEditor, checkReady, syncZoomSlider } from './ui.js';
-import { detectRooms, allBoundingBox } from './utils.js';
+import { detectRooms, allBoundingBox, cropSimArea } from './utils.js';
 import { generateReport } from './report.js';
 
 // ── Initialize canvas ──
@@ -93,7 +93,7 @@ function captureSnapshot() {
   const nextSnapTime = (sim.lastSnapTime < 0) ? interval : sim.lastSnapTime + interval;
   if (sim.elapsed >= nextSnapTime) {
     const mins = Math.floor(sim.elapsed / 60);
-    // Draw temp labels on canvas, capture, then next frame redraws without them
+    // Draw temp labels on canvas, capture cropped, then next frame redraws without them
     const ctx = canvas.ctx;
     ctx.save();
     ctx.translate(view.x, view.y);
@@ -103,7 +103,7 @@ function captureSnapshot() {
     sim.snapshots.push({
       time: sim.elapsed,
       mins,
-      imgData: canvas.el.toDataURL('image/png'),
+      imgData: cropSimArea(),
     });
     sim.lastSnapTime = sim.elapsed;
   }

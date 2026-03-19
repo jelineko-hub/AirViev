@@ -1,4 +1,4 @@
-import { PPM, GRID, OX, OY, DETECT_CELL, scene } from './state.js';
+import { PPM, GRID, OX, OY, DETECT_CELL, scene, canvas, view } from './state.js';
 
 /** Convert meters to pixels */
 export function mToP(m) { return m * PPM; }
@@ -11,6 +11,27 @@ export function snapGrid(v) { return Math.round(v / GRID) * GRID; }
 
 /** Snap value to double grid (0.2m) — for furniture placement */
 export function snapGrid2(v) { return Math.round(v / (GRID * 2)) * (GRID * 2); }
+
+/** Crop canvas to simulation bounding box area */
+export function cropSimArea() {
+  const bb = allBoundingBox();
+  if (!bb) return canvas.el.toDataURL('image/png');
+  const dpr = window.devicePixelRatio || 1;
+  const pad = 20;
+  const sx = (OX + bb.x * PPM) * view.zoom + view.x - pad;
+  const sy = (OY + bb.y * PPM) * view.zoom + view.y - pad;
+  const sw = bb.w * PPM * view.zoom + pad * 2;
+  const sh = bb.h * PPM * view.zoom + pad * 2 + 20;
+  const cx = Math.max(0, Math.round(sx * dpr));
+  const cy = Math.max(0, Math.round(sy * dpr));
+  const cw = Math.min(Math.round(sw * dpr), canvas.el.width - cx);
+  const ch = Math.min(Math.round(sh * dpr), canvas.el.height - cy);
+  if (cw < 10 || ch < 10) return canvas.el.toDataURL('image/png');
+  const crop = document.createElement('canvas');
+  crop.width = cw; crop.height = ch;
+  crop.getContext('2d').drawImage(canvas.el, cx, cy, cw, ch, 0, 0, cw, ch);
+  return crop.toDataURL('image/png');
+}
 
 /** Get bounding box of all walls (in meters) */
 export function allBoundingBox() {
