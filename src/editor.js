@@ -278,7 +278,132 @@ export function setupEditorEvents() {
   function handleDeleteWallClick(mx, my) {
     const hit = wallAtPixel(mx, my);
     if (!hit) { dom.statusMsg.textContent = 'Klikni na stenu'; return; }
-    removeWallAndRefs(hit.wi);
+
+    const w = scene.walls[hit.wi];
+    const isH = Math.abs(w.y1 - w.y2) < 0.001;
+    const wFixed = isH ? w.y1 : w.x1;
+    const wMin = isH ? Math.min(w.x1, w.x2) : Math.min(w.y1, w.y2);
+    const wMax = isH ? Math.max(w.x1, w.x2) : Math.max(w.y1, w.y2);
+    const clickAlong = wMin + hit.pos * (wMax - wMin);
+
+    // 1. Find T-junction split points: perpendicular walls intersecting clicked wall
+    const splits = [wMin, wMax];
+    for (let i = 0; i < scene.walls.length; i++) {
+      if (i === hit.wi) continue;
+      const w2 = scene.walls[i];
+      const isH2 = Math.abs(w2.y1 - w2.y2) < 0.001;
+      if (isH === isH2) continue; // skip parallel walls
+      if (isH) {
+        // Clicked wall horizontal (fixed y). w2 is vertical at x=w2.x1
+        const w2x = w2.x1;
+        const w2yMin = Math.min(w2.y1, w2.y2), w2yMax = Math.max(w2.y1, w2.y2);
+        if (w2x > wMin + 0.01 && w2x < wMax - 0.01 &&
+            wFixed >= w2yMin - 0.05 && wFixed <= w2yMax + 0.05) {
+          splits.push(w2x);
+        }
+      } else {
+        // Clicked wall vertical (fixed x). w2 is horizontal at y=w2.y1
+        const w2y = w2.y1;
+        const w2xMin = Math.min(w2.x1, w2.x2), w2xMax = Math.max(w2.x1, w2.x2);
+        if (w2y > wMin + 0.01 && w2y < wMax - 0.01 &&
+            wFixed >= w2xMin - 0.05 && wFixed <= w2xMax + 0.05) {
+          splits.push(w2y);
+        }
+      }
+    }
+    splits.sort((a, b) => a - b);
+    // Deduplicate
+    const uniqSplits = [splits[0]];
+    for (let i = 1; i < splits.length; i++) {
+      if (splits[i] - uniqSplits[uniqSplits.length - 1] > 0.01) uniqSplits.push(splits[i]);
+    }
+
+    // 2. Find which segment was clicked
+    let segMin = wMin, segMax = wMax;
+    if (uniqSplits.length > 2) {
+      for (let i = 0; i < uniqSplits.length - 1; i++) {
+        if (clickAlong >= uniqSplits[i] - 0.01 && clickAlong <= uniqSplits[i + 1] + 0.01) {
+          segMin = uniqSplits[i];
+          segMax = uniqSplits[i + 1];
+          break;
+        }
+      }
+    }
+
+    // 3. Also find collinear overlapping walls in the segment zone
+    const collinear = [];
+    for (let i = 0; i < scene.walls.length; i++) {
+      if (i === hit.wi) continue;
+      const w2 = scene.walls[i];
+      const isH2 = Math.abs(w2.y1 - w2.y2) < 0.001;
+      if (isH !== isH2) continue;
+      const f2 = isH2 ? w2.y1 : w2.x1;
+      if (Math.abs(f2 - wFixed) > 0.01) continue;
+      const min2 = isH2 ? Math.min(w2.x1, w2.x2) : Math.min(w2.y1, w2.y2);
+      const max2 = isH2 ? Math.max(w2.x1, w2.x2) : Math.max(w2.y1, w2.y2);
+      if (min2 < segMax - 0.01 && max2 > segMin + 0.01) {
+        collinear.push({ idx: i, min: min2, max: max2 });
+      }
+    }
+
+    // 4. Compute delete zone: segment, narrowed by overlap if collinear walls exist
+    let delMin = segMin, delMax = segMax;
+    if (collinear.length > 0) {
+      collinear.forEach(c => { delMin = Math.max(delMin, c.min); delMax = Math.min(delMax, c.max); });
+    }
+
+    // 5. Remove clicked wall, replace with remaining segments
+    // Remove objects in the delete zone
+    [scene.windows, scene.doors, scene.acUnits].forEach(arr => {
+      for (let j = arr.length - 1; j >= 0; j--) {
+        if (arr[j].wi !== hit.wi) continue;
+        const absPos = wMin + arr[j].pos * (wMax - wMin);
+        if (absPos > delMin - 0.01 && absPos < delMax + 0.01) arr.splice(j, 1);
+      }
+    });
+    scene.walls.splice(hit.wi, 1);
+    [scene.windows, scene.doors, scene.acUnits].forEach(arr => {
+      arr.forEach(o => { if (o.wi > hit.wi) o.wi--; });
+    });
+
+    // Add remaining segments of the clicked wall
+    const keepSegments = [];
+    if (wMin < delMin - 0.05) keepSegments.push([wMin, delMin]);
+    if (wMax > delMax + 0.05) keepSegments.push([delMax, wMax]);
+    keepSegments.forEach(([a, b]) => {
+      if (isH) scene.walls.push({ x1: a, y1: wFixed, x2: b, y2: wFixed });
+      else scene.walls.push({ x1: wFixed, y1: a, x2: wFixed, y2: b });
+    });
+
+    // 6. Also remove overlapping collinear walls' overlap portions
+    if (collinear.length > 0) {
+      // Adjust indices after removing hit.wi
+      collinear.forEach(c => { if (c.idx > hit.wi) c.idx--; });
+      collinear.sort((a, b) => b.idx - a.idx);
+      collinear.forEach(c => {
+        [scene.windows, scene.doors, scene.acUnits].forEach(arr => {
+          for (let j = arr.length - 1; j >= 0; j--) {
+            if (arr[j].wi !== c.idx) continue;
+            const absPos = c.min + arr[j].pos * (c.max - c.min);
+            if (absPos > delMin - 0.01 && absPos < delMax + 0.01) arr.splice(j, 1);
+          }
+        });
+        scene.walls.splice(c.idx, 1);
+        [scene.windows, scene.doors, scene.acUnits].forEach(arr => {
+          arr.forEach(o => { if (o.wi > c.idx) o.wi--; });
+        });
+        collinear.forEach(c2 => { if (c2.idx > c.idx) c2.idx--; });
+        if (c.min < delMin - 0.05) {
+          if (isH) scene.walls.push({ x1: c.min, y1: wFixed, x2: delMin, y2: wFixed });
+          else scene.walls.push({ x1: wFixed, y1: c.min, x2: wFixed, y2: delMin });
+        }
+        if (c.max > delMax + 0.05) {
+          if (isH) scene.walls.push({ x1: delMax, y1: wFixed, x2: c.max, y2: wFixed });
+          else scene.walls.push({ x1: wFixed, y1: delMax, x2: wFixed, y2: c.max });
+        }
+      });
+    }
+
     dom.statusMsg.textContent = 'Stena vymazaná';
     afterWallChange();
   }

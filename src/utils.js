@@ -39,64 +39,61 @@ export function detectRooms() {
   const gw = Math.ceil((bb.w + 2 * pad) / cs) + 1;
   const gh = Math.ceil((bb.h + 2 * pad) / cs) + 1;
 
-  // 0 = unknown, 1 = wall, 2 = outside, 3+ = room index + 3
-  const grid = new Uint16Array(gw * gh);
+  // Build barrier maps: barrierH[y*gw+x]=1 means vertical barrier between (x-1,y) and (x,y)
+  //                     barrierV[y*gw+x]=1 means horizontal barrier between (x,y-1) and (x,y)
+  const barrierH = new Uint8Array(gw * gh);
+  const barrierV = new Uint8Array(gw * gh);
 
-  // Mark wall cells
   scene.walls.forEach(w => {
     const isH = Math.abs(w.y1 - w.y2) < 0.001;
     if (isH) {
-      const y = w.y1;
+      const gy = Math.round((w.y1 - oy) / cs);
+      if (gy < 1 || gy >= gh) return;
       const minX = Math.min(w.x1, w.x2), maxX = Math.max(w.x1, w.x2);
-      const gy = Math.round((y - oy) / cs);
-      const gx1 = Math.floor((minX - ox) / cs);
-      const gx2 = Math.ceil((maxX - ox) / cs);
-      for (let x = Math.max(0, gx1); x <= Math.min(gw - 1, gx2); x++) {
-        if (gy >= 0 && gy < gh) grid[gy * gw + x] = 1;
-      }
+      const gx1 = Math.max(0, Math.floor((minX - ox) / cs));
+      const gx2 = Math.min(gw - 1, Math.ceil((maxX - ox) / cs) - 1);
+      for (let x = gx1; x <= gx2; x++) barrierV[gy * gw + x] = 1;
     } else {
-      const x = w.x1;
+      const gx = Math.round((w.x1 - ox) / cs);
+      if (gx < 1 || gx >= gw) return;
       const minY = Math.min(w.y1, w.y2), maxY = Math.max(w.y1, w.y2);
-      const gx = Math.round((x - ox) / cs);
-      const gy1 = Math.floor((minY - oy) / cs);
-      const gy2 = Math.ceil((maxY - oy) / cs);
-      for (let y = Math.max(0, gy1); y <= Math.min(gh - 1, gy2); y++) {
-        if (gx >= 0 && gx < gw) grid[y * gw + gx] = 1;
-      }
+      const gy1 = Math.max(0, Math.floor((minY - oy) / cs));
+      const gy2 = Math.min(gh - 1, Math.ceil((maxY - oy) / cs) - 1);
+      for (let y = gy1; y <= gy2; y++) barrierH[y * gw + gx] = 1;
     }
   });
 
   // Note: doors do NOT open walls for room detection — rooms stay separate.
   // Doors only open walls in simulation (buildWallMaps) for air flow.
 
-  // Flood fill from outside (BFS from border cells)
+  // 0 = unknown, 2 = outside, 3+ = room index + 3
+  const grid = new Uint16Array(gw * gh);
+
+  // Flood fill from outside using barriers
   const queue = [];
   for (let x = 0; x < gw; x++) {
-    if (!grid[x]) { grid[x] = 2; queue.push(x); }
+    grid[x] = 2; queue.push(x);
     const bi = (gh - 1) * gw + x;
-    if (!grid[bi]) { grid[bi] = 2; queue.push(bi); }
+    grid[bi] = 2; queue.push(bi);
   }
   for (let y = 1; y < gh - 1; y++) {
-    const li = y * gw;
-    if (!grid[li]) { grid[li] = 2; queue.push(li); }
+    grid[y * gw] = 2; queue.push(y * gw);
     const ri = y * gw + gw - 1;
-    if (!grid[ri]) { grid[ri] = 2; queue.push(ri); }
+    grid[ri] = 2; queue.push(ri);
   }
 
   let qi = 0;
   while (qi < queue.length) {
     const idx = queue[qi++];
     const x = idx % gw, y = (idx - x) / gw;
-    const nb = [
-      y > 0 ? idx - gw : -1,
-      y < gh - 1 ? idx + gw : -1,
-      x > 0 ? idx - 1 : -1,
-      x < gw - 1 ? idx + 1 : -1,
-    ];
-    for (let i = 0; i < 4; i++) {
-      const ni = nb[i];
-      if (ni >= 0 && grid[ni] === 0) { grid[ni] = 2; queue.push(ni); }
-    }
+    // Up: check barrierV at (x,y)
+    if (y > 0 && !grid[idx - gw] && !barrierV[idx]) { grid[idx - gw] = 2; queue.push(idx - gw); }
+    // Down: check barrierV at (x,y+1)
+    if (y < gh - 1 && !grid[idx + gw] && !barrierV[idx + gw]) { grid[idx + gw] = 2; queue.push(idx + gw); }
+    // Left: check barrierH at (x,y)
+    if (x > 0 && !grid[idx - 1] && !barrierH[idx]) { grid[idx - 1] = 2; queue.push(idx - 1); }
+    // Right: check barrierH at (x+1,y)
+    if (x < gw - 1 && !grid[idx + 1] && !barrierH[idx + 1]) { grid[idx + 1] = 2; queue.push(idx + 1); }
   }
 
   // Find connected components of interior cells (grid[i] === 0)
@@ -115,16 +112,14 @@ export function detectRooms() {
       const ci = q[qj++];
       cells.push(ci);
       const cx = ci % gw, cy = (ci - cx) / gw;
-      const nb2 = [
-        cy > 0 ? ci - gw : -1,
-        cy < gh - 1 ? ci + gw : -1,
-        cx > 0 ? ci - 1 : -1,
-        cx < gw - 1 ? ci + 1 : -1,
-      ];
-      for (let j = 0; j < 4; j++) {
-        const ni = nb2[j];
-        if (ni >= 0 && grid[ni] === 0) { grid[ni] = roomId; q.push(ni); }
-      }
+      // Up: check barrierV at (cx,cy)
+      if (cy > 0 && grid[ci - gw] === 0 && !barrierV[ci]) { grid[ci - gw] = roomId; q.push(ci - gw); }
+      // Down: check barrierV at (cx,cy+1)
+      if (cy < gh - 1 && grid[ci + gw] === 0 && !barrierV[ci + gw]) { grid[ci + gw] = roomId; q.push(ci + gw); }
+      // Left: check barrierH at (cx,cy)
+      if (cx > 0 && grid[ci - 1] === 0 && !barrierH[ci]) { grid[ci - 1] = roomId; q.push(ci - 1); }
+      // Right: check barrierH at (cx+1,cy)
+      if (cx < gw - 1 && grid[ci + 1] === 0 && !barrierH[ci + 1]) { grid[ci + 1] = roomId; q.push(ci + 1); }
     }
 
     // Compute centroid and area
