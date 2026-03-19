@@ -49,21 +49,47 @@ export function drawAcUnit(ctx, wall, pos, label) {
   const wx2 = OX + mToP(wall.x2), wy2 = OY + mToP(wall.y2);
   const ax = wx1 + pos * (wx2 - wx1), ay = wy1 + pos * (wy2 - wy1);
   const isH = Math.abs(wall.y1 - wall.y2) < 0.001;
-  const uw = 64, uh = 12;
+  const uw = 58, uh = 14;
+
+  // Determine inside direction (toward bounding box center)
+  const bb = allBoundingBox();
+  let offX = 0, offY = 0;
+  if (bb) {
+    const cx = OX + mToP(bb.x + bb.w / 2), cy = OY + mToP(bb.y + bb.h / 2);
+    if (isH) offY = ay < cy ? 1 : -1;
+    else offX = ax < cx ? 1 : -1;
+  } else {
+    if (isH) offY = 1; else offX = 1;
+  }
 
   let bx, by, bw, bh;
-  if (isH) { bx = ax - uw / 2; by = ay - uh / 2; bw = uw; bh = uh; }
-  else { bx = ax - uh / 2; by = ay - uw / 2; bw = uh; bh = uw; }
+  if (isH) {
+    bx = ax - uw / 2; by = offY > 0 ? ay : ay - uh; bw = uw; bh = uh;
+  } else {
+    bx = offX > 0 ? ax : ax - uh; by = ay - uw / 2; bw = uh; bh = uw;
+  }
 
-  ctx.fillStyle = '#fff'; ctx.strokeStyle = '#888'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, isH ? uh / 2 : bw / 2); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#555'; ctx.font = 'bold 9px DM Sans'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  // Main body — slightly off-white, small radius
+  ctx.fillStyle = '#f5f5f5'; ctx.strokeStyle = '#999'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 3); ctx.fill(); ctx.stroke();
 
+  // Bottom vent line (air outlet slit)
+  ctx.strokeStyle = '#bbb'; ctx.lineWidth = 0.8;
+  if (isH) {
+    const ventY = offY > 0 ? by + bh - 3 : by + 3;
+    ctx.beginPath(); ctx.moveTo(bx + 6, ventY); ctx.lineTo(bx + bw - 6, ventY); ctx.stroke();
+  } else {
+    const ventX = offX > 0 ? bx + bw - 3 : bx + 3;
+    ctx.beginPath(); ctx.moveTo(ventX, by + 6); ctx.lineTo(ventX, by + bh - 6); ctx.stroke();
+  }
+
+  // Label
+  ctx.fillStyle = '#777'; ctx.font = '8px DM Sans'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   if (!isH) {
     ctx.save(); ctx.translate(bx + bw / 2, by + bh / 2); ctx.rotate(-Math.PI / 2);
     ctx.fillText(label || 'AC', 0, 0); ctx.restore();
   } else {
-    ctx.fillText(label || 'AC', bx + bw / 2, by + bh / 2);
+    ctx.fillText(label || 'AC', bx + bw / 2, by + bh / 2 - 1);
   }
   ctx.textBaseline = 'alphabetic';
 }
