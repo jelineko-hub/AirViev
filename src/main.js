@@ -47,8 +47,8 @@ function initUI() {
 
   dom.saveBtn.onclick = manualSave;
   dom.loadBtn.onclick = load;
-  dom.exportBtn.onclick = exportJSON;
-  dom.importFile.onchange = (e) => { importJSON(e.target.files[0]); e.target.value = ''; };
+  if (dom.exportBtn) dom.exportBtn.onclick = exportJSON;
+  if (dom.importFile) dom.importFile.onchange = (e) => { importJSON(e.target.files[0]); e.target.value = ''; };
 
   dom.simBtn.onclick = switchToSim;
   dom.editBtn.onclick = switchToEditor;

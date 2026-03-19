@@ -134,8 +134,8 @@ export function cacheDom() {
   dom.clearBtn = document.getElementById('clearBtn');
   dom.saveBtn = document.getElementById('saveBtn');
   dom.loadBtn = document.getElementById('loadBtn');
-  dom.exportBtn = document.getElementById('exportBtn');
-  dom.importFile = document.getElementById('importFile');
+  dom.exportBtn = document.getElementById('exportBtn');   // optional, may not exist
+  dom.importFile = document.getElementById('importFile'); // optional, may not exist
   dom.edToolbar = document.getElementById('edToolbar');
   dom.simToolbar = document.getElementById('simToolbar');
   dom.tuneRow = document.getElementById('tuneRow');

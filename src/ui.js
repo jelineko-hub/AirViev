@@ -1,9 +1,9 @@
 import { scene, dom, editor, sim, view } from './state.js';
 import { initSim } from './simulation.js';
 
-/** Check if simulation button should be visible */
+/** Check if simulation button should be enabled */
 export function checkReady() {
-  dom.simBtn.style.display = (scene.rooms.length && scene.acUnits.length) ? '' : 'none';
+  dom.simBtn.disabled = !(scene.rooms.length && scene.acUnits.length);
 }
 
 /** Set active editor tool */
