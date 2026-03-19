@@ -340,6 +340,9 @@ export function initSim() {
   sim.renderW = mToP(sim.gridW * sim.cellSize);
   sim.renderH = mToP(sim.gridH * sim.cellSize);
 
+  const airCount = sim.airMap.reduce((s, v) => s + v, 0);
+  console.log('[ACdone sim]', { gridW: sim.gridW, gridH: sim.gridH, airCells: airCount, renderW: sim.renderW, renderH: sim.renderH, rooms: scene.rooms.length, walls: scene.walls.length });
+
   sim.unitPower = scene.acUnits.map(() => 1);
   sim.unitRoomTemp = scene.acUnits.map(() => 26);
   sim.unitOutTemp = scene.acUnits.map(() => 15);
