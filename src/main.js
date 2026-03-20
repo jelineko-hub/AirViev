@@ -2,7 +2,7 @@ import { canvas, scene, view, editor, sim, dom, cacheDom, AC_MODELS } from './st
 import { drawEditor, drawSim, drawTempLabels } from './renderer.js';
 import { initSim, emitParticles, updateParticles, updateGrid } from './simulation.js';
 import { setupEditorEvents } from './editor.js';
-import { autoSave, load, exportJSON, importJSON, saveToSlot, getSavedSlots, loadFromSlot, deleteSlot } from './storage.js';
+import { autoSave, load, exportJSON, importJSON, saveToSlot, getNextDefaultName, getSavedSlots, loadFromSlot, deleteSlot } from './storage.js';
 import { setTool, switchToSim, switchToEditor, checkReady, syncZoomSlider } from './ui.js';
 import { detectRooms, allBoundingBox, cropSimArea } from './utils.js';
 import { generateReport } from './report.js';
@@ -47,7 +47,7 @@ function initUI() {
     setTool('room'); checkReady();
   };
 
-  dom.saveBtn.onclick = saveToSlot;
+  dom.saveBtn.onclick = openSaveDialog;
   dom.loadBtn.onclick = openLoadDialog;
   if (dom.exportBtn) dom.exportBtn.onclick = exportJSON;
   if (dom.importFile) dom.importFile.onchange = (e) => { importJSON(e.target.files[0]); e.target.value = ''; };
@@ -126,6 +126,32 @@ function loop() {
     captureSnapshot();
   }
   requestAnimationFrame(loop);
+}
+
+// ── Save dialog ──
+
+function openSaveDialog() {
+  const dialog = document.getElementById('saveDialog');
+  const input = document.getElementById('saveNameInput');
+  input.value = getNextDefaultName();
+  dialog.style.display = 'flex';
+  input.focus();
+  input.select();
+
+  const close = () => { dialog.style.display = 'none'; };
+
+  document.getElementById('saveCancelBtn').onclick = close;
+  document.getElementById('saveConfirmBtn').onclick = () => {
+    if (input.value.trim()) {
+      saveToSlot(input.value);
+      close();
+    }
+  };
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter' && input.value.trim()) { saveToSlot(input.value); close(); }
+    if (e.key === 'Escape') close();
+  };
+  dialog.onclick = (e) => { if (e.target === dialog) close(); };
 }
 
 // ── Load dialog ──

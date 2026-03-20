@@ -8,7 +8,7 @@
 </head>
 <body>
 <header>
-<h1>ACdone <span style="font-size:10px;font-weight:400;color:#999">v2026.03.20-038</span></h1>
+<h1>ACdone <span style="font-size:10px;font-weight:400;color:#999">v2026.03.20-039</span></h1>
 <span class="mode-label" id="modeLabel">Editor</span>
 <span id="statusMsg">Ťahaj = nový obdĺžnik (4 steny)</span>
 <div class="group" style="margin-left:auto"><label>Zoom</label><input type="range" id="zoomSlider" min="30" max="400" value="100" style="width:80px"><span class="val" id="zoomVal">1.0×</span></div>
@@ -67,6 +67,17 @@
 <div class="info-bar" id="infoBar"></div>
 <div class="canvas-wrap"><canvas id="c"></canvas></div>
 <div class="legend" id="simLeg"><span>16°C</span><div class="bar"></div><span>30°C</span></div>
+<!-- Save dialog -->
+<div id="saveDialog" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center">
+<div style="background:#fff;border-radius:10px;padding:20px;min-width:300px;max-width:380px;box-shadow:0 8px 30px rgba(0,0,0,.25)">
+<h3 style="margin:0 0 12px;font-size:15px">Uložiť pôdorys</h3>
+<input id="saveNameInput" type="text" style="width:100%;padding:8px 10px;border:1px solid #d5d2ca;border-radius:6px;font-family:inherit;font-size:13px;box-sizing:border-box" placeholder="Názov pôdorysu">
+<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+<button id="saveCancelBtn" style="padding:6px 16px;border:1px solid #d5d2ca;border-radius:6px;background:#fff;cursor:pointer;font-family:inherit">Zrušiť</button>
+<button id="saveConfirmBtn" style="padding:6px 16px;border:none;border-radius:6px;background:#1D9E75;color:#fff;cursor:pointer;font-family:inherit;font-weight:600">Uložiť</button>
+</div>
+</div>
+</div>
 <!-- Load dialog -->
 <div id="loadDialog" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center">
 <div style="background:#fff;border-radius:10px;padding:20px;min-width:300px;max-width:420px;max-height:70vh;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,.25)">

@@ -122,10 +122,13 @@ function nextDefaultName() {
   return 'Pôdorys ' + n;
 }
 
-/** Save to named slot with prompt */
-export function saveToSlot() {
-  const defaultName = nextDefaultName();
-  const name = prompt('Názov pôdorysu:', defaultName);
+/** Get default name for next save */
+export function getNextDefaultName() {
+  return nextDefaultName();
+}
+
+/** Save to named slot */
+export function saveToSlot(name) {
   if (!name || !name.trim()) return;
   const trimmed = name.trim();
   const state = getState();
