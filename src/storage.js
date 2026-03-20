@@ -4,6 +4,7 @@ import { detectRooms } from './utils.js';
 
 const LS_KEY = 'airview_v2';
 const LS_KEY_V1 = 'airview_v1';
+const SLOT_PREFIX = 'acdone_slot_';
 
 export function getState() {
   return {
@@ -90,9 +91,69 @@ export function autoSave() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(getState())); } catch (e) { /* ignore */ }
 }
 
-export function manualSave() {
-  autoSave();
-  dom.statusMsg.textContent = 'Uložené ✓';
+/** Get list of saved slot names */
+export function getSavedSlots() {
+  const slots = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.startsWith(SLOT_PREFIX)) {
+      const name = key.slice(SLOT_PREFIX.length);
+      try {
+        const data = JSON.parse(localStorage.getItem(key));
+        const wallCount = (data.walls || []).length;
+        const roomCount = (data.roomTemps || []).length;
+        const acCount = (data.acUnits || []).length;
+        slots.push({ name, key, wallCount, roomCount, acCount, savedAt: data._savedAt || null });
+      } catch (e) {
+        slots.push({ name, key, wallCount: 0, roomCount: 0, acCount: 0 });
+      }
+    }
+  }
+  // Sort by save date (newest first)
+  slots.sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || ''));
+  return slots;
+}
+
+/** Generate next default name */
+function nextDefaultName() {
+  const slots = getSavedSlots();
+  let n = 1;
+  while (slots.some(s => s.name === 'Pôdorys ' + n)) n++;
+  return 'Pôdorys ' + n;
+}
+
+/** Save to named slot with prompt */
+export function saveToSlot() {
+  const defaultName = nextDefaultName();
+  const name = prompt('Názov pôdorysu:', defaultName);
+  if (!name || !name.trim()) return;
+  const trimmed = name.trim();
+  const state = getState();
+  state._savedAt = new Date().toISOString();
+  try {
+    localStorage.setItem(SLOT_PREFIX + trimmed, JSON.stringify(state));
+    dom.statusMsg.textContent = 'Uložené: ' + trimmed + ' ✓';
+  } catch (e) {
+    dom.statusMsg.textContent = 'Chyba pri ukladaní';
+  }
+}
+
+/** Load from named slot */
+export function loadFromSlot(name) {
+  const data = localStorage.getItem(SLOT_PREFIX + name);
+  if (!data) { dom.statusMsg.textContent = 'Pôdorys nenájdený'; return; }
+  try {
+    applyState(JSON.parse(data));
+    autoSave(); // also save as current autosave
+    dom.statusMsg.textContent = 'Načítané: ' + name + ' ✓';
+  } catch (e) {
+    dom.statusMsg.textContent = 'Chyba: poškodené dáta';
+  }
+}
+
+/** Delete a saved slot */
+export function deleteSlot(name) {
+  localStorage.removeItem(SLOT_PREFIX + name);
 }
 
 export function load() {

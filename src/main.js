@@ -2,7 +2,7 @@ import { canvas, scene, view, editor, sim, dom, cacheDom, AC_MODELS } from './st
 import { drawEditor, drawSim, drawTempLabels } from './renderer.js';
 import { initSim, emitParticles, updateParticles, updateGrid } from './simulation.js';
 import { setupEditorEvents } from './editor.js';
-import { autoSave, manualSave, load, exportJSON, importJSON } from './storage.js';
+import { autoSave, manualSave, load, exportJSON, importJSON, saveToSlot, getSavedSlots, loadFromSlot, deleteSlot } from './storage.js';
 import { setTool, switchToSim, switchToEditor, checkReady, syncZoomSlider } from './ui.js';
 import { detectRooms, allBoundingBox, cropSimArea } from './utils.js';
 import { generateReport } from './report.js';
@@ -47,8 +47,8 @@ function initUI() {
     setTool('room'); checkReady();
   };
 
-  dom.saveBtn.onclick = manualSave;
-  dom.loadBtn.onclick = load;
+  dom.saveBtn.onclick = saveToSlot;
+  dom.loadBtn.onclick = openLoadDialog;
   if (dom.exportBtn) dom.exportBtn.onclick = exportJSON;
   if (dom.importFile) dom.importFile.onchange = (e) => { importJSON(e.target.files[0]); e.target.value = ''; };
 
@@ -126,6 +126,72 @@ function loop() {
     captureSnapshot();
   }
   requestAnimationFrame(loop);
+}
+
+// ── Load dialog ──
+
+function openLoadDialog() {
+  const dialog = document.getElementById('loadDialog');
+  const list = document.getElementById('loadList');
+  const empty = document.getElementById('loadEmpty');
+  const slots = getSavedSlots();
+
+  list.innerHTML = '';
+  if (slots.length === 0) {
+    empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none';
+    slots.forEach(s => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f8f7f4;border-radius:6px;cursor:pointer';
+      row.onmouseenter = () => row.style.background = '#eef5ee';
+      row.onmouseleave = () => row.style.background = '#f8f7f4';
+
+      const info = document.createElement('div');
+      info.style.cssText = 'flex:1;min-width:0';
+      const title = document.createElement('div');
+      title.style.cssText = 'font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      title.textContent = s.name;
+      const sub = document.createElement('div');
+      sub.style.cssText = 'font-size:11px;color:#888';
+      const parts = [];
+      if (s.roomCount > 0) parts.push(s.roomCount + ' izieb');
+      if (s.wallCount > 0) parts.push(s.wallCount + ' stien');
+      if (s.acCount > 0) parts.push(s.acCount + ' klím');
+      if (s.savedAt) {
+        const d = new Date(s.savedAt);
+        parts.push(d.toLocaleDateString('sk') + ' ' + d.toLocaleTimeString('sk', { hour: '2-digit', minute: '2-digit' }));
+      }
+      sub.textContent = parts.join(' · ');
+      info.appendChild(title);
+      info.appendChild(sub);
+
+      const delBtn = document.createElement('button');
+      delBtn.style.cssText = 'background:none;border:none;color:#c44;cursor:pointer;font-size:16px;padding:2px 6px;flex-shrink:0';
+      delBtn.textContent = '×';
+      delBtn.title = 'Vymazať';
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (confirm('Vymazať pôdorys "' + s.name + '"?')) {
+          deleteSlot(s.name);
+          openLoadDialog(); // refresh
+        }
+      };
+
+      row.onclick = () => {
+        loadFromSlot(s.name);
+        dialog.style.display = 'none';
+      };
+
+      row.appendChild(info);
+      row.appendChild(delBtn);
+      list.appendChild(row);
+    });
+  }
+
+  dialog.style.display = 'flex';
+  document.getElementById('loadDialogClose').onclick = () => { dialog.style.display = 'none'; };
+  dialog.onclick = (e) => { if (e.target === dialog) dialog.style.display = 'none'; };
 }
 
 // ── Boot ──
