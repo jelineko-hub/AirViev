@@ -83,6 +83,24 @@ function initUI() {
   dom.spreadWidth.oninput = function() { dom.spreadWidthVal.textContent = this.value + '°'; };
   dom.direction.oninput = function() { dom.directionVal.textContent = this.value + '°'; };
   dom.targetMult.oninput = function() { dom.targetMultVal.textContent = (+this.value / 100).toFixed(1) + 'x'; };
+
+  // Advanced toggle
+  if (dom.advToggle) {
+    let advOpen = false;
+    dom.advToggle.onclick = () => {
+      advOpen = !advOpen;
+      dom.advancedRow.style.display = advOpen ? 'flex' : 'none';
+      dom.advToggle.textContent = advOpen ? '▼ Advanced' : '▶ Advanced';
+    };
+  }
+  // Advanced slider displays
+  if (dom.adCool) dom.adCool.oninput = function() { dom.adCoolV.textContent = (+this.value / 100).toFixed(1) + 'x'; };
+  if (dom.adDrag) dom.adDrag.oninput = function() { dom.adDragV.textContent = '.' + this.value; };
+  if (dom.adYouth) dom.adYouth.oninput = function() { dom.adYouthV.textContent = (+this.value / 10).toFixed(1); };
+  if (dom.adDifBase) dom.adDifBase.oninput = function() { dom.adDifBaseV.textContent = '.' + String(this.value).padStart(3, '0'); };
+  if (dom.adDifGrow) dom.adDifGrow.oninput = function() { dom.adDifGrowV.textContent = '.' + String(this.value).padStart(3, '0'); };
+  if (dom.adWallDist) dom.adWallDist.oninput = function() { dom.adWallDistV.textContent = (+this.value / 10) + 'm'; };
+  if (dom.adTimeMul) dom.adTimeMul.oninput = function() { dom.adTimeMulV.textContent = this.value + 'x'; };
 }
 
 // ── Snapshot capture ──

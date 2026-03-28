@@ -12,6 +12,16 @@ function getDiffusionFactor() { return +dom.diffusion.value / 100; }
 function getSunGain() { return +dom.sunGain.value / 100; }
 function getTargetMult() { return +dom.targetMult.value / 100; }
 
+// Advanced tuning getters
+function getAdCoolMul() { return dom.adCool ? +dom.adCool.value / 100 : 1; }
+function getAdDrag() { return dom.adDrag ? +dom.adDrag.value / 1000 : 0.992; }
+function getAdYouthExp() { return dom.adYouth ? +dom.adYouth.value / 10 : 2; }
+function getAdDifBase() { return dom.adDifBase ? +dom.adDifBase.value / 1000 : 0.03; }
+function getAdDifGrow() { return dom.adDifGrow ? +dom.adDifGrow.value / 1000 : 0.04; }
+function getAdWallDist() { return dom.adWallDist ? +dom.adWallDist.value / 10 : 3; }
+function getAdTimeMul() { return dom.adTimeMul ? +dom.adTimeMul.value : 1; }
+function getAdAdiab() { return dom.adAdiab ? dom.adAdiab.checked : false; }
+
 // ── Build wall maps from scene.walls ──
 
 function cellInDoor(px, py) {
@@ -224,7 +234,7 @@ function buildSimMaps() {
         else dist = py;
 
         if (dist > 3) continue;
-        const decay = Math.pow(Math.max(0, 1 - dist / 3), 1.5);
+        const decay = Math.pow(Math.max(0, 1 - dist / getAdWallDist()), 1.5);
         const k = wallK * decay;
         const i = y * gridW + x;
         if (k > sim.externalCoeff[i]) { sim.externalCoeff[i] = k; sim.externalTemp[i] = extTemp; }
@@ -309,7 +319,7 @@ export function initSim() {
       if (!sim.airMap[i]) { sim.tempGrid[i] = 20; continue; }
       const ri = sim.cellRoomMap[i];
       const baseTemp = ri >= 0 && scene.rooms[ri].temp ? scene.rooms[ri].temp : 26;
-      const extPull = sim.externalCoeff[i] > 0
+      const extPull = (!getAdAdiab() && sim.externalCoeff[i] > 0)
         ? Math.max(0, (sim.externalTemp[i] - baseTemp) * sg * 8 * sim.externalCoeff[i])
         : 0;
       sim.tempGrid[i] = baseTemp + extPull;
@@ -368,6 +378,9 @@ export function initSim() {
 // ── AC unit helpers ──
 
 function getUnitPixelPos(u) {
+  if (u.ceiling) {
+    return [OX + mToP(u.cx), OY + mToP(u.cy)];
+  }
   const w = scene.walls[u.wi];
   if (!w) return [0, 0];
   const wx1 = OX + mToP(w.x1), wy1 = OY + mToP(w.y1);
@@ -376,6 +389,7 @@ function getUnitPixelPos(u) {
 }
 
 function getUnitBaseAngle(u) {
+  if (u.ceiling) return 0; // ceiling units use 4 directions — handled in createParticle
   const w = scene.walls[u.wi];
   if (!w) return 0;
   const isH = wallDir(w) === 'h';
@@ -390,14 +404,21 @@ function getUnitBaseAngle(u) {
 }
 
 function getRoomAvgTemp(u) {
-  // Find which room the AC unit faces
   const [ax, ay] = getUnitPixelPos(u);
-  const w = scene.walls[u.wi];
-  if (!w) return 25;
-  const ba = getUnitBaseAngle(u);
-  // Check the cell slightly inward from the wall
-  const checkX = ax + Math.cos(ba) * 20;
-  const checkY = ay + Math.sin(ba) * 20;
+
+  // Ceiling unit: check cell at unit position directly
+  let checkX, checkY;
+  if (u.ceiling) {
+    checkX = ax;
+    checkY = ay;
+  } else {
+    // Wall unit: find which room the AC unit faces
+    const w = scene.walls[u.wi];
+    if (!w) return 25;
+    const ba = getUnitBaseAngle(u);
+    checkX = ax + Math.cos(ba) * 20;
+    checkY = ay + Math.sin(ba) * 20;
+  }
   const gx = Math.floor((checkX - sim.renderX) / (sim.cellSize * PPM));
   const gy = Math.floor((checkY - sim.renderY) / (sim.cellSize * PPM));
   if (gx < 0 || gx >= sim.gridW || gy < 0 || gy >= sim.gridH) return 25;
@@ -433,21 +454,36 @@ function createParticle(u, ui) {
   const m = AC_MODELS[u.model];
   const tm = getTargetMult();
   const [ax, ay] = getUnitPixelPos(u);
-  const ba = getUnitBaseAngle(u);
   const pw = Math.max(sim.unitPower[ui], .2);
   const uw = m.width * (PPM / 100);
-  const off = (Math.random() - .5) * uw;
-  const w = scene.walls[u.wi];
-  const isH = w && wallDir(w) === 'h';
 
-  let px, py;
-  if (isH) { px = ax + off; py = ay + (ba > 0 ? 10 : -10); }
-  else { px = ax + (ba === 0 ? 10 : -10); py = ay + off; }
+  let px, py, a;
 
-  const dr = +dom.direction.value * Math.PI / 180;
-  const ha = (+dom.spreadWidth.value / 2) * Math.PI / 180;
-  const ea = ba + dr;
-  const a = ea + (Math.random() - .5) * 2 * ha;
+  if (u.ceiling) {
+    // Ceiling cassette: emit in 4 directions (0°, 90°, 180°, 270°) with spread
+    const dir = Math.floor(Math.random() * 4);
+    const baseAngles = [0, Math.PI / 2, Math.PI, 3 * Math.PI / 2];
+    const ba = baseAngles[dir];
+    const ha = (50 * Math.PI / 180); // ±50° spread per vent
+    a = ba + (Math.random() - .5) * 2 * ha;
+    // Start position: slightly offset from center in emission direction
+    const off = (Math.random() - .5) * uw * 0.5;
+    px = ax + Math.cos(ba) * 12 + Math.cos(ba + Math.PI / 2) * off;
+    py = ay + Math.sin(ba) * 12 + Math.sin(ba + Math.PI / 2) * off;
+  } else {
+    // Wall unit: existing logic
+    const ba = getUnitBaseAngle(u);
+    const off = (Math.random() - .5) * uw;
+    const w = scene.walls[u.wi];
+    const isH = w && wallDir(w) === 'h';
+    if (isH) { px = ax + off; py = ay + (ba > 0 ? 10 : -10); }
+    else { px = ax + (ba === 0 ? 10 : -10); py = ay + off; }
+    const dr = +dom.direction.value * Math.PI / 180;
+    const ha = (+dom.spreadWidth.value / 2) * Math.PI / 180;
+    const ea = ba + dr;
+    a = ea + (Math.random() - .5) * 2 * ha;
+  }
+
   const tpx = m.thrust * PPM * pw * tm;
   const spd = tpx / 130 * (.8 + Math.random() * .4);
 
@@ -574,7 +610,7 @@ function applyParticleHeat(p, cpx, oT, cp, es) {
     const ct = sim.tempGrid[ii];
     if (ct > oT) {
       const youth = 1 - p.age / p.maxAge;
-      const str = cp * youth * youth;
+      const str = cp * Math.pow(youth, getAdYouthExp());
       const eb = sim.furnitureEdge[ii];
       sim.tempGrid[ii] = ct - (ct - oT) * str * (1 + eb * es);
     }
@@ -593,11 +629,11 @@ export function updateParticles() {
 
     const m = AC_MODELS[u.model];
     const oT = sim.unitOutTemp[p.unitIndex];
-    const cp = m.cool * sim.unitPower[p.unitIndex];
+    const cp = m.cool * getAdCoolMul() * sim.unitPower[p.unitIndex];
 
     const ox = p.x, oy = p.y;
     p.x += p.vx; p.y += p.vy;
-    p.vx *= .992; p.vy *= .992;
+    const drag = getAdDrag(); p.vx *= drag; p.vy *= drag;
     p.vx += (Math.random() - .5) * .05; p.vy += (Math.random() - .5) * .05;
 
     const [ax, ay] = getUnitPixelPos(u);
@@ -625,7 +661,7 @@ export function updateGrid() {
   const sg = getSunGain();
   const es = getEdgeSoftness();
 
-  const df = (.03 + progress * .04) * dfM;
+  const df = (getAdDifBase() + progress * getAdDifGrow()) * dfM;
   const passes = Math.max(1, Math.round((2 + Math.floor(progress * 2)) * dfM));
 
   const NB_DX = [-1, 1, 0, 0, -1, 1, -1, 1];
@@ -661,7 +697,7 @@ export function updateGrid() {
     }
   }
 
-  if (sg > 0 && (scene.southSide || scene.westSide)) {
+  if (sg > 0 && !getAdAdiab() && (scene.southSide || scene.westSide)) {
     for (let i = 0; i < gridW * gridH; i++) {
       if (sim.airMap[i] && !sim.furnitureSolid[i] && sim.externalCoeff[i] > 0) {
         const delta = sim.externalTemp[i] - sim.tempGrid[i];
@@ -670,7 +706,7 @@ export function updateGrid() {
     }
   }
 
-  sim.elapsed += 2;
+  sim.elapsed += 2 * getAdTimeMul();
   dom.clock.textContent =
     String(Math.floor(sim.elapsed / 60)).padStart(2, '0') + ':' +
     String(sim.elapsed % 60).padStart(2, '0');

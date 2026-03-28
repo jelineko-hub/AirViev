@@ -1,0 +1,1544 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACDone Thermal Simulator</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#faf9f6;--bg2:#f0eeea;--fg:#333;--fg2:#666;--fg3:#999;
+  --accent:#1D9E75;--accent2:#D85A30;--border:#e0ddd6;
+  --card:#fff;--radius:10px;--shadow:0 2px 12px rgba(0,0,0,.06);
+}
+body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--fg);font-size:13px;line-height:1.5}
+header{background:var(--card);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:12px}
+header h1{font-size:16px;font-weight:700;color:var(--accent)}
+header h1 span{font-size:10px;font-weight:400;color:var(--fg3)}
+.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;background:#e8f5e9;color:#2e7d32}
+
+.container{display:grid;grid-template-columns:340px 1fr;gap:0;height:calc(100vh - 46px)}
+.sidebar{background:var(--card);border-right:1px solid var(--border);overflow-y:auto;padding:16px}
+.main{display:flex;flex-direction:column;overflow:hidden}
+
+.section{margin-bottom:16px}
+.section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--fg3);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.section-title svg{width:14px;height:14px;opacity:.5}
+
+.form-row{display:flex;gap:8px;margin-bottom:6px;align-items:center}
+.form-row label{font-size:11px;color:var(--fg2);min-width:80px;flex-shrink:0}
+.form-row input,.form-row select{flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;background:#fff;outline:none;transition:border .15s}
+.form-row input:focus,.form-row select:focus{border-color:var(--accent)}
+.form-row .unit{font-size:10px;color:var(--fg3);margin-left:4px;min-width:24px}
+
+.ac-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+.ac-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.ac-card-title{font-size:12px;font-weight:600}
+.ac-remove{background:none;border:none;cursor:pointer;color:#c44;font-size:16px;line-height:1;padding:2px}
+.ac-preset-row{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.ac-preset{padding:3px 8px;border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;background:#fff;transition:all .15s}
+.ac-preset:hover{border-color:var(--accent)}
+.ac-preset.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+.btn{padding:6px 14px;border:none;border-radius:6px;font-family:inherit;font-size:12px;cursor:pointer;font-weight:600;transition:all .15s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#178a64}
+.btn-primary:disabled{opacity:.5;cursor:default}
+.btn-secondary{background:var(--bg);border:1px solid var(--border);color:var(--fg)}
+.btn-secondary:hover{background:var(--bg2)}
+.btn-accent{background:var(--accent2);color:#fff}
+.btn-accent:hover{background:#c04e28}
+.btn-sm{padding:4px 10px;font-size:11px}
+.btn-add{width:100%;padding:8px;background:var(--bg);border:1px dashed var(--border);border-radius:8px;font-family:inherit;font-size:11px;cursor:pointer;color:var(--fg2);transition:all .15s}
+.btn-add:hover{border-color:var(--accent);color:var(--accent)}
+
+.tab-bar{display:flex;border-bottom:1px solid var(--border);background:var(--card);padding:0 16px}
+.tab{padding:8px 16px;font-size:12px;font-weight:600;color:var(--fg3);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.tab:hover{color:var(--fg)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+.view{flex:1;position:relative;overflow:hidden}
+.view-panel{position:absolute;inset:0;display:none}
+.view-panel.active{display:flex;flex-direction:column}
+
+/* Metrics strip */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--border)}
+.metric{padding:8px 12px;border-radius:8px;background:var(--bg)}
+.metric-label{font-size:10px;color:var(--fg3);margin-bottom:2px}
+.metric-value{font-size:18px;font-weight:600}
+.metric-value span{font-size:11px;font-weight:400;color:var(--fg3);margin-left:2px}
+.metric-value.good{color:var(--accent)}
+.metric-value.warn{color:var(--accent2)}
+
+/* Chart */
+.chart-wrap{flex:1;padding:16px;display:flex;align-items:center;justify-content:center}
+.chart-wrap svg{max-width:100%;max-height:100%}
+
+/* Floor plan canvas */
+.canvas-wrap{flex:1;position:relative;background:#f8f7f4}
+.canvas-wrap canvas{position:absolute;top:0;left:0}
+
+/* Heat map legend */
+.hm-legend{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.92);padding:6px 14px;border-radius:8px;box-shadow:var(--shadow);font-size:10px;color:var(--fg2)}
+.hm-legend .bar{width:180px;height:10px;border-radius:5px;background:linear-gradient(90deg,#2b6cb0,#38b2ac,#48bb78,#ecc94b,#ed8936,#e53e3e)}
+
+/* Status bar */
+.status-bar{padding:6px 16px;border-top:1px solid var(--border);background:var(--card);font-size:10px;color:var(--fg3);display:flex;justify-content:space-between}
+
+/* Progress animation */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.simulating .metric-value{animation:pulse 1.5s infinite}
+
+/* Scrollbar */
+.sidebar::-webkit-scrollbar{width:5px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* Responsive */
+@media(max-width:768px){
+  .container{grid-template-columns:1fr;height:auto}
+  .sidebar{border-right:none;border-bottom:1px solid var(--border);max-height:50vh}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>ACDone <span>Thermal Simulator v1.0</span></h1>
+  <span class="badge">DEMO</span>
+  <div style="flex:1"></div>
+  <span style="font-size:10px;color:var(--fg3)">Dual-node model &middot; Kalibrované podľa VRST '22 (MAE 0.36°C)</span>
+</header>
+
+<div class="container">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <!-- Presets -->
+    <div class="section">
+      <div class="section-title">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12M2 8h12M2 13h12"/><circle cx="5" cy="3" r="1.5" fill="currentColor"/><circle cx="10" cy="8" r="1.5" fill="currentColor"/><circle cx="7" cy="13" r="1.5" fill="currentColor"/></svg>
+        Prednastavené scenáre
+      </div>
+      <select id="presetSelect" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;background:#fff;margin-bottom:4px">
+        <option value="">— Vlastné nastavenie —</option>
+        <optgroup label="VRST '22 (Korea University + LG)">
+          <option value="vrst-lab">🔬 AC Testing Lab (11.8×7.6×2.7m, kazeta)</option>
+          <option value="vrst-office">🏢 Kancelária user study (3.5×7.5×2.9m)</option>
+        </optgroup>
+        <optgroup label="Typické miestnosti">
+          <option value="bedroom">🛏 Spálňa (4×3.5m, 2.6m)</option>
+          <option value="living">🛋 Obývačka (5.2×4m, 2.6m)</option>
+          <option value="office-small">💼 Malá kancelária (4×5m, 2.7m)</option>
+          <option value="office-open">🏗 Open-space (10×8m, 2.8m)</option>
+          <option value="server-room">🖥 Serverovňa (5×4m, 2.7m, 3kW záťaž)</option>
+        </optgroup>
+      </select>
+      <div id="presetNote" style="font-size:10px;color:var(--fg3);margin-bottom:4px;min-height:14px"></div>
+    </div>
+
+    <!-- Room config -->
+    <div class="section">
+      <div class="section-title">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/></svg>
+        Miestnosť
+      </div>
+      <div class="form-row"><label>Šírka</label><input type="number" id="roomW" value="5.2" min="2" max="20" step="0.1"><span class="unit">m</span></div>
+      <div class="form-row"><label>Dĺžka</label><input type="number" id="roomL" value="4.0" min="2" max="20" step="0.1"><span class="unit">m</span></div>
+      <div class="form-row"><label>Výška</label><input type="number" id="roomH" value="2.6" min="2.2" max="4" step="0.1"><span class="unit">m</span></div>
+      <div class="form-row"><label>Objem</label><input type="text" id="roomVol" value="54.1" readonly style="background:var(--bg);color:var(--fg2)"><span class="unit">m³</span></div>
+    </div>
+
+    <!-- Temperature config -->
+    <div class="section">
+      <div class="section-title">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v10M5 8a3 3 0 106 0"/><circle cx="8" cy="12" r="2.5"/></svg>
+        Teploty
+      </div>
+      <div class="form-row"><label>Počiatočná</label><input type="number" id="initTemp" value="32" min="20" max="45" step="0.5"><span class="unit">°C</span></div>
+      <div class="form-row"><label>Vonkajšia</label><input type="number" id="outTemp" value="35" min="20" max="48" step="0.5"><span class="unit">°C</span></div>
+      <div class="form-row"><label>Cieľová</label><input type="number" id="targetTemp" value="22" min="16" max="28" step="0.5"><span class="unit">°C</span></div>
+      <div class="form-row"><label>Regulácia</label>
+        <select id="acMode">
+          <option value="inverter" selected>Invertor (plynulý)</option>
+          <option value="thermostat">On/Off (termostat)</option>
+          <option value="full">Plný výkon (bez regulácie)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Heat gains -->
+    <div class="section">
+      <div class="section-title">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="4" r="2.5"/><path d="M3 14c0-2.8 2.2-5 5-5s5 2.2 5 5"/></svg>
+        Tepelné zisky
+      </div>
+      <div class="form-row"><label>Osoby</label><input type="number" id="occupants" value="2" min="0" max="30" step="1"><span class="unit">×75W</span></div>
+      <div class="form-row"><label>Zariadenia</label><input type="number" id="equipW" value="200" min="0" max="5000" step="50"><span class="unit">W</span></div>
+      <div class="form-row"><label>Izolácia</label>
+        <select id="insulation">
+          <option value="0.5">Nová (dobre izolovaná)</option>
+          <option value="1" selected>Štandardná</option>
+          <option value="2">Slabá (starý dom)</option>
+          <option value="3">Žiadna (single glass)</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Konštrukcia</label>
+        <select id="construction">
+          <option value="1.5">Ťažká (tehla, betón)</option>
+          <option value="1" selected>Stredná</option>
+          <option value="0.6">Ľahká (drevostavba)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- AC Units -->
+    <div class="section">
+      <div class="section-title">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="8" rx="2"/><path d="M4 13v1M12 13v1M5 7h6M5 9h4"/></svg>
+        Klimatizačné jednotky
+      </div>
+      <div id="acList"></div>
+      <button class="btn-add" id="addAC">+ Pridať AC jednotku</button>
+    </div>
+
+    <!-- Simulation params -->
+    <div class="section">
+      <div class="section-title">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l3 2"/></svg>
+        Simulácia
+      </div>
+      <div class="form-row"><label>Trvanie</label>
+        <select id="simDuration">
+          <option value="3600">1 hod</option>
+          <option value="7200" selected>2 hod</option>
+          <option value="10800">3 hod</option>
+          <option value="14400">4 hod</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Krok</label>
+        <select id="simStep">
+          <option value="5" selected>5 s</option>
+          <option value="10">10 s</option>
+          <option value="30">30 s</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Model</label>
+        <select id="simModel">
+          <option value="spatial" selected>2D priestorový (VRST-like)</option>
+          <option value="lumped">Lumped (rýchly)</option>
+        </select>
+      </div>
+      <div id="spatialParams">
+        <div class="form-row"><label>Difuzivita α</label><input type="range" id="diffAlpha" min="0.005" max="0.20" step="0.005" value="0.05" style="flex:1"><span class="unit" id="diffAlphaVal">0.050</span></div>
+        <div class="form-row"><label>Jet penetrácia</label><input type="range" id="jetPen" min="0.05" max="1.0" step="0.05" value="0.20" style="flex:1"><span class="unit" id="jetPenVal">0.20</span></div>
+        <div class="form-row"><label>Pozícia AC</label>
+          <select id="acPosition">
+            <option value="wall-top">Stena hore (stred)</option>
+            <option value="center">Stred (kazeta)</option>
+            <option value="wall-left">Stena vľavo (stred)</option>
+          </select>
+        </div>
+        <div class="form-row"><label>Steny</label>
+          <select id="wallMode">
+            <option value="envelope" selected>S prestupom tepla</option>
+            <option value="adiabatic">Adiabatické (lab)</option>
+          </select>
+        </div>
+      </div>
+      <div id="lumpedParams" style="display:none">
+        <div class="form-row"><label>Mixing η</label><input type="number" id="mixEff" value="0.70" min="0.3" max="1.0" step="0.05"><span class="unit"></span></div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button class="btn btn-primary" id="runBtn" style="flex:1">▶ Simulovať</button>
+        <button class="btn btn-secondary" id="resetBtn">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN AREA -->
+  <div class="main">
+    <div class="tab-bar">
+      <button class="tab active" data-tab="curve">Cooling Curve</button>
+      <button class="tab" data-tab="heatmap">Heat Map</button>
+      <button class="tab" data-tab="data">Dáta</button>
+    </div>
+
+    <div id="metricsStrip" class="metrics" style="display:none">
+      <div class="metric"><div class="metric-label">Čas na cieľ</div><div class="metric-value" id="mTime">—<span>min</span></div></div>
+      <div class="metric"><div class="metric-label">Finálna teplota</div><div class="metric-value" id="mFinal">—<span>°C</span></div></div>
+      <div class="metric"><div class="metric-label">Spotreba</div><div class="metric-value" id="mEnergy">—<span>kWh</span></div></div>
+      <div class="metric"><div class="metric-label">Priem. výkon</div><div class="metric-value" id="mPower">—<span>kW</span></div></div>
+      <div class="metric"><div class="metric-label">Objem</div><div class="metric-value" id="mVol">—<span>m³</span></div></div>
+      <div class="metric"><div class="metric-label">Prietok</div><div class="metric-value" id="mFlow">—<span>m³/h</span></div></div>
+    </div>
+
+    <div class="view">
+      <!-- Cooling Curve tab -->
+      <div class="view-panel active" id="panelCurve">
+        <div class="chart-wrap" id="chartWrap">
+          <div style="text-align:center;color:var(--fg3)">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="#ccc" stroke-width="2"><path d="M6 36 Q16 36 20 24 Q24 12 32 18 Q40 24 42 12"/><line x1="6" y1="6" x2="6" y2="40"/><line x1="4" y1="40" x2="44" y2="40"/></svg>
+            <div style="margin-top:8px;font-size:12px">Nakonfiguruj miestnosť a AC jednotky, potom spusti simuláciu</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Heat Map tab -->
+      <div class="view-panel" id="panelHeatmap">
+        <div style="padding:8px 16px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-primary" id="hmPlay">▶ Play</button>
+          <input type="range" id="hmSlider" min="0" max="0" value="0" style="flex:1;min-width:120px;accent-color:var(--accent)">
+          <span id="hmTimeLabel" style="font-size:12px;font-weight:600;min-width:60px">0:00</span>
+          <span id="hmTempLabel" style="font-size:12px;color:var(--fg2);min-width:50px">—°C</span>
+          <span id="hmPowerLabel" style="font-size:11px;color:var(--accent);min-width:50px">—%</span>
+          <select id="hmSpeed" style="font-size:11px;padding:2px 6px;border:1px solid var(--border);border-radius:4px">
+            <option value="1">1×</option>
+            <option value="2" selected>2×</option>
+            <option value="5">5×</option>
+            <option value="10">10×</option>
+          </select>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="hmCanvas"></canvas>
+          <div class="hm-legend">
+            <span>16°C</span><div class="bar"></div><span>30°C</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data tab -->
+      <div class="view-panel" id="panelData">
+        <div style="padding:16px;overflow:auto;flex:1">
+          <table id="dataTable" style="width:100%;border-collapse:collapse;font-size:11px">
+            <thead>
+              <tr style="background:var(--bg);border-bottom:2px solid var(--border)">
+                <th style="padding:6px 8px;text-align:left">Čas (min)</th>
+                <th style="padding:6px 8px;text-align:right">Vzduch (°C)</th>
+                <th style="padding:6px 8px;text-align:right">Tepelná masa (°C)</th>
+                <th style="padding:6px 8px;text-align:right">Výkon (%)</th>
+                <th style="padding:6px 8px;text-align:right">Chladenie (W)</th>
+                <th style="padding:6px 8px;text-align:right">Energia (kWh)</th>
+              </tr>
+            </thead>
+            <tbody id="dataBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <span id="statusText">Pripravené</span>
+      <span>ACDone Thermal Engine &middot; Dual-node lumped capacitance &middot; Kalibrované VRST '22</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACDone Thermal Engine — Vanilla JS port from thermal-engine.ts
+// Dual-node lumped capacitance model calibrated against VRST '22
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const RHO_AIR = 1.2;       // kg/m³
+const CP_AIR  = 1005;      // J/(kg·K)
+
+const CALIBRATED = {
+  mixingEfficiency: 0.70,
+  thermalMassCapacity: 1_190_000,  // J/K (lab reference)
+  thermalMassCoupling: 100,        // W/K
+  envelopeUA: 5,                   // W/K
+};
+
+// AC presets
+const AC_PRESETS = {
+  'samsung-2.5kw': { name: 'Samsung 2.5kW', type: 'wall', airflowM3h: 570, supplyTemp: 13, coolingW: 2500 },
+  'samsung-3.5kw': { name: 'Samsung 3.5kW', type: 'wall', airflowM3h: 690, supplyTemp: 13, coolingW: 3500 },
+  'samsung-5.0kw': { name: 'Samsung 5.0kW', type: 'wall', airflowM3h: 870, supplyTemp: 12, coolingW: 5000 },
+  'daikin-2.5kw':  { name: 'Daikin 2.5kW',  type: 'wall', airflowM3h: 510, supplyTemp: 14, coolingW: 2500 },
+  'daikin-3.5kw':  { name: 'Daikin 3.5kW',  type: 'wall', airflowM3h: 630, supplyTemp: 13, coolingW: 3500 },
+  'daikin-5.0kw':  { name: 'Daikin 5.0kW',  type: 'wall', airflowM3h: 810, supplyTemp: 12, coolingW: 5000 },
+  'mitsubishi-2.5kw': { name: 'Mitsubishi 2.5kW', type: 'wall', airflowM3h: 540, supplyTemp: 13, coolingW: 2500 },
+  'mitsubishi-3.5kw': { name: 'Mitsubishi 3.5kW', type: 'wall', airflowM3h: 660, supplyTemp: 13, coolingW: 3500 },
+  'ceiling-7.1kw': { name: 'Kazeta 7.1kW', type: 'ceiling', airflowM3h: 1200, supplyTemp: 12, coolingW: 7100 },
+  'ceiling-14kw':  { name: 'Kazeta 14kW',  type: 'ceiling', airflowM3h: 2400, supplyTemp: 11, coolingW: 14000 },
+  'floor-5.0kw':   { name: 'Stojacia 5kW', type: 'floor', airflowM3h: 720, supplyTemp: 13, coolingW: 5000 },
+  'custom':        { name: 'Vlastné', type: 'wall', airflowM3h: 600, supplyTemp: 13, coolingW: 3000 },
+};
+
+function estimateThermalParams(w, l, h, insulMul, constMul) {
+  const vol = w * l * h;
+  const surf = 2*(w*l) + 2*(w*h) + 2*(l*h);
+  return {
+    thermalMassCapacity: Math.round(vol * 4914 * (constMul || 1)),
+    thermalMassCoupling: Math.round(vol * 0.413),
+    envelopeUA: Math.round(surf * 0.03 * (insulMul || 1)),
+    volume: vol,
+    surfaceArea: surf,
+  };
+}
+
+function simulate(room, acUnits, params) {
+  const est = estimateThermalParams(room.width, room.length, room.height, room.insulMul, room.constMul);
+  const p = {
+    mixingEfficiency: params.mixingEfficiency ?? CALIBRATED.mixingEfficiency,
+    thermalMassCapacity: est.thermalMassCapacity,
+    thermalMassCoupling: est.thermalMassCoupling,
+    envelopeUA: est.envelopeUA,
+    timeStepS: params.timeStepS ?? 5,
+    totalTimeS: params.totalTimeS ?? 7200,
+    outputIntervalS: params.outputIntervalS ?? 60,
+  };
+
+  const vol = room.width * room.length * room.height;
+  const Cair = RHO_AIR * vol * CP_AIR;
+
+  let totalMassFlow = 0;
+  let weightedSupply = 0;
+  let totalAirflow = 0;
+
+  for (const ac of acUnits) {
+    const mf = (ac.airflowM3h / 3600) * RHO_AIR;
+    totalMassFlow += mf;
+    weightedSupply += mf * ac.supplyTemp;
+    totalAirflow += ac.airflowM3h;
+  }
+  const avgSupply = totalMassFlow > 0 ? weightedSupply / totalMassFlow : room.initialTemp;
+
+  let Tair = room.initialTemp;
+  let Tmass = room.initialTemp;
+  let cumEnergyJ = 0;
+  let timeToTarget = -1;
+  const target = params.targetTemp ?? 22;
+
+  const points = [];
+
+  // AC control mode: 'inverter' | 'thermostat' | 'full'
+  const mode = params.acMode ?? 'inverter';
+  const rampRange = 5; // °C — inverter ramps from 100% to min over this range above target
+  const minPower = 0.10; // 10% minimum when at or near target
+  const hysteresis = 0.5; // °C deadband for thermostat
+  let thermostatOn = true;
+
+  for (let t = 0; t <= p.totalTimeS; t += p.timeStepS) {
+    // Determine power fraction based on mode
+    let powerFrac = 1.0;
+    if (mode === 'inverter') {
+      const diff = Tair - target;
+      if (diff <= 0) powerFrac = minPower;
+      else if (diff >= rampRange) powerFrac = 1.0;
+      else powerFrac = minPower + (1.0 - minPower) * (diff / rampRange);
+    } else if (mode === 'thermostat') {
+      if (Tair <= target) thermostatOn = false;
+      else if (Tair > target + hysteresis) thermostatOn = true;
+      powerFrac = thermostatOn ? 1.0 : 0.0;
+    }
+    // mode === 'full' → powerFrac stays 1.0
+
+    const qAC = powerFrac * p.mixingEfficiency * totalMassFlow * CP_AIR * (avgSupply - Tair);
+    const qMass = p.thermalMassCoupling * (Tmass - Tair);
+    const qEnv = p.envelopeUA * (room.outdoorTemp - Tair);
+    const qInt = room.internalGains ?? 0;
+    const coolingPower = -qAC;
+    cumEnergyJ += Math.abs(qAC) * p.timeStepS;
+
+    const dTair = (qAC + qMass + qEnv + qInt) / Cair * p.timeStepS;
+    const dTmass = p.thermalMassCoupling * (Tair - Tmass) / p.thermalMassCapacity * p.timeStepS;
+    Tair += dTair;
+    Tmass += dTmass;
+
+    if (timeToTarget < 0 && acUnits.length > 0 && Tair <= target + 1) {
+      timeToTarget = t;
+    }
+
+    if (t % p.outputIntervalS === 0) {
+      points.push({
+        timeS: t,
+        timeMin: Math.round(t / 60 * 10) / 10,
+        airTemp: Math.round(Tair * 100) / 100,
+        massTemp: Math.round(Tmass * 100) / 100,
+        coolingPowerW: Math.round(coolingPower),
+        energyKwh: Math.round(cumEnergyJ / 3_600_000 * 1000) / 1000,
+        powerPct: Math.round(powerFrac * 100),
+      });
+    }
+  }
+
+  const avgCooling = points.reduce((s, p) => s + p.coolingPowerW, 0) / (points.length || 1);
+
+  return {
+    points,
+    summary: {
+      timeToTargetMin: timeToTarget >= 0 ? Math.round(timeToTarget / 60) : -1,
+      finalAirTemp: points[points.length - 1]?.airTemp ?? room.initialTemp,
+      finalMassTemp: points[points.length - 1]?.massTemp ?? room.initialTemp,
+      avgCoolingPowerW: Math.round(avgCooling),
+      totalEnergyKwh: points[points.length - 1]?.energyKwh ?? 0,
+      roomVolumeM3: Math.round(vol * 10) / 10,
+      totalAirflowM3h: totalAirflow,
+    },
+  };
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 2D Spatial Thermal Simulation (VRST-like grid-based approach)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function simulateSpatial(room, acUnits, params) {
+  const dx = 0.5;  // cell size in meters
+  const gw = Math.max(4, Math.round(room.width / dx));
+  const gh = Math.max(4, Math.round(room.length / dx));
+  const nCells = gw * gh;
+  const cellVol = dx * dx * room.height; // m³ per cell
+  const cellCair = RHO_AIR * cellVol * CP_AIR; // J/K per cell
+
+  const dt = params.timeStepS ?? 5;
+  const totalTime = params.totalTimeS ?? 7200;
+  const outInterval = params.outputIntervalS ?? 60;
+  const target = params.targetTemp ?? 22;
+  const alpha = params.diffusivity ?? 0.05; // m²/s effective turbulent diffusivity
+  const adiabatic = params.adiabatic ?? false;
+  const jetPen = params.jetPenetration ?? 0.20; // fraction of vertical column affected by AC jet
+
+  // Thermal mass (walls, floor, ceiling) — same dual-node as before
+  const est = estimateThermalParams(room.width, room.length, room.height, room.insulMul, room.constMul);
+  const thermalMassC = est.thermalMassCapacity;
+  const thermalMassH = est.thermalMassCoupling;
+  const envelopeUA = adiabatic ? 0 : est.envelopeUA;
+
+  // Stability check: α·dt/dx² must be < 0.25 for 2D explicit scheme
+  const cfl = alpha * dt / (dx * dx);
+  const stepsPerDt = cfl > 0.2 ? Math.ceil(cfl / 0.2) : 1;
+  const subDt = dt / stepsPerDt;
+
+  // Initialize grid
+  const grid = new Float32Array(nCells).fill(room.initialTemp);
+  const buf = new Float32Array(nCells);
+  let Tmass = room.initialTemp;
+
+  // AC positions on grid + injection strength
+  // acPosition: 'center' → middle of room, 'wall-top' → top wall center, etc.
+  const acPos = params.acPosition ?? 'wall-top';
+  const acCells = [];
+  const totalAirflow = acUnits.reduce((s, ac) => s + ac.airflowM3h, 0);
+  const totalMassFlow = acUnits.reduce((s, ac) => s + (ac.airflowM3h / 3600) * RHO_AIR, 0);
+  const weightedSupply = acUnits.reduce((s, ac) => s + (ac.airflowM3h / 3600) * RHO_AIR * ac.supplyTemp, 0);
+  const avgSupply = totalMassFlow > 0 ? weightedSupply / totalMassFlow : room.initialTemp;
+
+  // AC position (grid center coordinates)
+  let acCx, acCy;
+  if (acPos === 'center') {
+    acCx = Math.floor(gw / 2); acCy = Math.floor(gh / 2);
+  } else if (acPos === 'wall-top') {
+    acCx = Math.floor(gw / 2); acCy = 1;
+  } else if (acPos === 'wall-left') {
+    acCx = 1; acCy = Math.floor(gh / 2);
+  } else {
+    acCx = Math.floor(gw / 2); acCy = 0;
+  }
+
+  // Build Gaussian influence field for AC injection
+  // This models the AC jet spreading — strong at source, weak at distance
+  // Jet reach ~ 3m (6 cells at 0.5m), total weight normalizes to 1.0
+  const jetReach = 3.0 / dx; // cells
+  const acWeight = new Float32Array(nCells);
+  let totalWeight = 0;
+  for (let y = 0; y < gh; y++) {
+    for (let x = 0; x < gw; x++) {
+      const ddx = x - acCx, ddy = y - acCy;
+      const dist = Math.sqrt(ddx*ddx + ddy*ddy);
+      const w = Math.exp(-dist*dist / (2 * jetReach * jetReach));
+      acWeight[y * gw + x] = w;
+      totalWeight += w;
+    }
+  }
+  // Normalize so total injection is conserved
+  for (let i = 0; i < nCells; i++) acWeight[i] /= totalWeight;
+
+  // Inverter / thermostat / full mode
+  const mode = params.acMode ?? 'inverter';
+  const rampRange = 5, minPower = 0.10, hysteresis = 0.5;
+  let thermostatOn = true;
+
+  let cumEnergyJ = 0;
+  let timeToTarget = -1;
+  const points = [];
+  const grids = []; // store grid snapshots for heat map
+
+  for (let t = 0; t <= totalTime; t += dt) {
+    // Average air temp for control logic
+    let avgT = 0;
+    for (let i = 0; i < nCells; i++) avgT += grid[i];
+    avgT /= nCells;
+
+    // Power fraction
+    let powerFrac = 1.0;
+    if (mode === 'inverter') {
+      const diff = avgT - target;
+      if (diff <= 0) powerFrac = minPower;
+      else if (diff >= rampRange) powerFrac = 1.0;
+      else powerFrac = minPower + (1.0 - minPower) * (diff / rampRange);
+    } else if (mode === 'thermostat') {
+      if (avgT <= target) thermostatOn = false;
+      else if (avgT > target + hysteresis) thermostatOn = true;
+      powerFrac = thermostatOn ? 1.0 : 0.0;
+    }
+
+    // Sub-stepping for stability
+    for (let sub = 0; sub < stepsPerDt; sub++) {
+      // 1. Diffusion (explicit finite difference)
+      const D = alpha * subDt / (dx * dx);
+      for (let y = 0; y < gh; y++) {
+        for (let x = 0; x < gw; x++) {
+          const i = y * gw + x;
+          const c = grid[i];
+          const left  = x > 0      ? grid[i - 1]  : c; // Neumann BC (adiabatic at boundary)
+          const right = x < gw - 1 ? grid[i + 1]  : c;
+          const up    = y > 0      ? grid[i - gw] : c;
+          const down  = y < gh - 1 ? grid[i + gw] : c;
+          buf[i] = c + D * (left + right + up + down - 4 * c);
+        }
+      }
+      // Copy buffer back
+      grid.set(buf);
+
+      // 2. AC injection — distribute cooling across Gaussian field
+      // jetPenetration: fraction of vertical column directly affected by AC jet (3D→2D correction)
+      // Ceiling cassette in 2.7m room: jet reaches ~0.5m width, ~2m depth → ~20% of column
+      const acDtFrac = powerFrac * jetPen * totalMassFlow * CP_AIR * subDt;
+      for (let i = 0; i < nCells; i++) {
+        if (acWeight[i] > 1e-6) {
+          grid[i] += acWeight[i] * acDtFrac * (avgSupply - grid[i]) / cellCair;
+        }
+      }
+
+      // 3. Envelope heat gain (edge cells, skip if adiabatic)
+      if (!adiabatic && envelopeUA > 0) {
+        // Distribute UA across perimeter cells
+        const perimCells = 2 * gw + 2 * (gh - 2);
+        const uaPerCell = envelopeUA / perimCells;
+        for (let x = 0; x < gw; x++) {
+          // top edge
+          grid[x] += uaPerCell * (room.outdoorTemp - grid[x]) * subDt / cellCair;
+          // bottom edge
+          grid[(gh-1)*gw + x] += uaPerCell * (room.outdoorTemp - grid[(gh-1)*gw + x]) * subDt / cellCair;
+        }
+        for (let y = 1; y < gh - 1; y++) {
+          // left edge
+          grid[y*gw] += uaPerCell * (room.outdoorTemp - grid[y*gw]) * subDt / cellCair;
+          // right edge
+          grid[y*gw + gw-1] += uaPerCell * (room.outdoorTemp - grid[y*gw + gw-1]) * subDt / cellCair;
+        }
+      }
+
+      // 4. Internal gains (uniform)
+      const qIntPerCell = (room.internalGains ?? 0) / nCells * subDt / cellCair;
+      if (qIntPerCell > 0) {
+        for (let i = 0; i < nCells; i++) grid[i] += qIntPerCell;
+      }
+    }
+
+    // Recompute average after all sub-steps
+    avgT = 0;
+    for (let i = 0; i < nCells; i++) avgT += grid[i];
+    avgT /= nCells;
+
+    // Thermal mass coupling (mass node absorbs/releases to average air)
+    const qMassTotal = thermalMassH * (avgT - Tmass);
+    Tmass += qMassTotal * dt / thermalMassC;
+    // Distribute mass coupling back to all cells (weighted by proximity to edges)
+    const massCouplingPerCell = -qMassTotal * dt / (nCells * cellCair);
+    for (let i = 0; i < nCells; i++) grid[i] += massCouplingPerCell;
+
+    // Energy tracking
+    const coolingPower = powerFrac * totalMassFlow * CP_AIR * Math.max(0, avgT - avgSupply);
+    cumEnergyJ += coolingPower * dt;
+
+    // Check target
+    if (timeToTarget < 0 && acUnits.length > 0 && avgT <= target + 1) {
+      timeToTarget = t;
+    }
+
+    // Output
+    if (t % outInterval === 0) {
+      points.push({
+        timeS: t,
+        timeMin: Math.round(t / 60 * 10) / 10,
+        airTemp: Math.round(avgT * 100) / 100,
+        massTemp: Math.round(Tmass * 100) / 100,
+        coolingPowerW: Math.round(coolingPower),
+        energyKwh: Math.round(cumEnergyJ / 3_600_000 * 1000) / 1000,
+        powerPct: Math.round(powerFrac * 100),
+      });
+      // Store grid snapshot for heat map
+      grids.push({ grid: new Float32Array(grid), gw, gh });
+    }
+  }
+
+  const avgCooling = points.reduce((s, p) => s + p.coolingPowerW, 0) / (points.length || 1);
+
+  return {
+    points,
+    grids,
+    summary: {
+      timeToTargetMin: timeToTarget >= 0 ? Math.round(timeToTarget / 60) : -1,
+      finalAirTemp: points[points.length - 1]?.airTemp ?? room.initialTemp,
+      finalMassTemp: points[points.length - 1]?.massTemp ?? room.initialTemp,
+      avgCoolingPowerW: Math.round(avgCooling),
+      totalEnergyKwh: points[points.length - 1]?.energyKwh ?? 0,
+      roomVolumeM3: Math.round(room.width * room.length * room.height * 10) / 10,
+      totalAirflowM3h: totalAirflow,
+      gridSize: `${gw}×${gh} (${dx}m)`,
+    },
+  };
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Scenario Presets
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const PRESETS = {
+  'vrst-lab': {
+    note: 'VRST \'22 validačný experiment — 792 termočlánkov, MAE 0.36°C, čas na cieľ 204.8 min',
+    room: { w: 11.8, l: 7.6, h: 2.7 },
+    temps: { init: 33, outdoor: 33, target: 21 },
+    gains: { occupants: 0, equipW: 0 },
+    building: { insulation: '1', construction: '1' },
+    sim: { duration: '14400', acMode: 'full', mixEff: 0.70, model: 'spatial', diffusivity: 0.01, acPosition: 'center', wallMode: 'adiabatic', jetPen: 0.20 },
+    ac: ['ceiling-7.1kw'],
+  },
+  'vrst-office': {
+    note: 'VRST \'22 user study — 21 účastníkov, porovnanie AR vs. intuícia, 7000s simulácia',
+    room: { w: 3.5, l: 7.5, h: 2.9 },
+    temps: { init: 33, outdoor: 33, target: 21 },
+    gains: { occupants: 0, equipW: 0 },
+    building: { insulation: '1', construction: '1' },
+    sim: { duration: '7200', acMode: 'full', mixEff: 0.70, model: 'spatial', diffusivity: 0.01, acPosition: 'wall-top', wallMode: 'adiabatic', jetPen: 0.30 },
+    ac: ['samsung-3.5kw'],
+  },
+  'bedroom': {
+    note: 'Typická spálňa — 2 osoby, mierná záťaž',
+    room: { w: 4.0, l: 3.5, h: 2.6 },
+    temps: { init: 30, outdoor: 33, target: 22 },
+    gains: { occupants: 2, equipW: 50 },
+    building: { insulation: '1', construction: '1' },
+    sim: { duration: '7200', acMode: 'inverter', mixEff: 0.70 },
+    ac: ['samsung-2.5kw'],
+  },
+  'living': {
+    note: 'Obývacia izba — 3 osoby, TV, osvetlenie',
+    room: { w: 5.2, l: 4.0, h: 2.6 },
+    temps: { init: 32, outdoor: 35, target: 22 },
+    gains: { occupants: 3, equipW: 200 },
+    building: { insulation: '1', construction: '1' },
+    sim: { duration: '7200', acMode: 'inverter', mixEff: 0.70 },
+    ac: ['samsung-3.5kw'],
+  },
+  'office-small': {
+    note: 'Malá kancelária — 3 PC stanice, 4 osoby',
+    room: { w: 4.0, l: 5.0, h: 2.7 },
+    temps: { init: 30, outdoor: 34, target: 23 },
+    gains: { occupants: 4, equipW: 600 },
+    building: { insulation: '0.5', construction: '1' },
+    sim: { duration: '7200', acMode: 'inverter', mixEff: 0.70 },
+    ac: ['daikin-3.5kw'],
+  },
+  'office-open': {
+    note: 'Open-space — 15 ľudí, 10 PC + tlačiareň, veľká záťaž',
+    room: { w: 10.0, l: 8.0, h: 2.8 },
+    temps: { init: 31, outdoor: 35, target: 23 },
+    gains: { occupants: 15, equipW: 2500 },
+    building: { insulation: '0.5', construction: '1.5' },
+    sim: { duration: '7200', acMode: 'inverter', mixEff: 0.65 },
+    ac: ['ceiling-14kw'],
+  },
+  'server-room': {
+    note: 'Serverovňa — konštantná 3kW záťaž, nepretržité chladenie',
+    room: { w: 5.0, l: 4.0, h: 2.7 },
+    temps: { init: 28, outdoor: 30, target: 20 },
+    gains: { occupants: 0, equipW: 3000 },
+    building: { insulation: '0.5', construction: '1.5' },
+    sim: { duration: '7200', acMode: 'inverter', mixEff: 0.75 },
+    ac: ['samsung-5.0kw'],
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UI State
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let acCards = [];
+let simResult = null;
+let acIdCounter = 0;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DOM refs
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const $ = id => document.getElementById(id);
+
+// Room inputs
+const roomW = $('roomW'), roomL = $('roomL'), roomH = $('roomH'), roomVol = $('roomVol');
+const initTemp = $('initTemp'), outTemp = $('outTemp'), targetTemp = $('targetTemp');
+const occupants = $('occupants'), equipW = $('equipW');
+const insulation = $('insulation'), construction = $('construction');
+
+// Simulation
+const simDuration = $('simDuration'), simStep = $('simStep'), mixEff = $('mixEff');
+const runBtn = $('runBtn'), resetBtn = $('resetBtn');
+
+// Tabs & panels
+const tabs = document.querySelectorAll('.tab');
+const panels = { curve: $('panelCurve'), heatmap: $('panelHeatmap'), data: $('panelData') };
+
+// Metrics
+const metricsStrip = $('metricsStrip');
+const mTime = $('mTime'), mFinal = $('mFinal'), mEnergy = $('mEnergy');
+const mPower = $('mPower'), mVol = $('mVol'), mFlow = $('mFlow');
+
+const statusText = $('statusText');
+const chartWrap = $('chartWrap');
+const acListEl = $('acList');
+const dataBody = $('dataBody');
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Volume calc
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function updateVolume() {
+  const v = (+roomW.value * +roomL.value * +roomH.value).toFixed(1);
+  roomVol.value = v;
+}
+[roomW, roomL, roomH].forEach(el => el.addEventListener('input', updateVolume));
+
+// Model toggle
+$('simModel').addEventListener('change', function() {
+  $('spatialParams').style.display = this.value === 'spatial' ? '' : 'none';
+  $('lumpedParams').style.display = this.value === 'lumped' ? '' : 'none';
+});
+$('diffAlpha').addEventListener('input', function() {
+  $('diffAlphaVal').textContent = (+this.value).toFixed(3);
+});
+$('jetPen').addEventListener('input', function() {
+  $('jetPenVal').textContent = (+this.value).toFixed(2);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Preset loader
+// ═══════════════════════════════════════════════════════════════════════════════
+
+$('presetSelect').addEventListener('change', function() {
+  const key = this.value;
+  if (!key || !PRESETS[key]) {
+    $('presetNote').textContent = '';
+    return;
+  }
+  const p = PRESETS[key];
+
+  // Room
+  roomW.value = p.room.w;
+  roomL.value = p.room.l;
+  roomH.value = p.room.h;
+  updateVolume();
+
+  // Temperatures
+  initTemp.value = p.temps.init;
+  outTemp.value = p.temps.outdoor;
+  targetTemp.value = p.temps.target;
+
+  // Gains
+  occupants.value = p.gains.occupants;
+  equipW.value = p.gains.equipW;
+
+  // Building
+  insulation.value = p.building.insulation;
+  construction.value = p.building.construction;
+
+  // Simulation
+  simDuration.value = p.sim.duration;
+  $('acMode').value = p.sim.acMode;
+  if ($('mixEff')) $('mixEff').value = p.sim.mixEff;
+
+  // Spatial model params
+  if (p.sim.model) {
+    $('simModel').value = p.sim.model;
+    $('simModel').dispatchEvent(new Event('change'));
+  }
+  if (p.sim.diffusivity != null) {
+    $('diffAlpha').value = p.sim.diffusivity;
+    $('diffAlphaVal').textContent = p.sim.diffusivity.toFixed(3);
+  }
+  if (p.sim.acPosition) $('acPosition').value = p.sim.acPosition;
+  if (p.sim.wallMode) $('wallMode').value = p.sim.wallMode;
+  if (p.sim.jetPen != null) {
+    $('jetPen').value = p.sim.jetPen;
+    $('jetPenVal').textContent = p.sim.jetPen.toFixed(2);
+  }
+
+  // AC units — clear and add from preset
+  acCards = [];
+  acIdCounter = 0;
+  p.ac.forEach(presetKey => addACUnit(presetKey));
+
+  // Note
+  $('presetNote').textContent = p.note;
+
+  statusText.textContent = `Preset "${this.options[this.selectedIndex].text.replace(/^[^\s]+\s/, '')}" načítaný`;
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Tab switching
+// ═══════════════════════════════════════════════════════════════════════════════
+
+tabs.forEach(tab => tab.addEventListener('click', () => {
+  tabs.forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  Object.values(panels).forEach(p => p.classList.remove('active'));
+  panels[tab.dataset.tab].classList.add('active');
+  if (tab.dataset.tab === 'heatmap' && simResult) drawHeatMap();
+}));
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AC Card Management
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function addACUnit(presetKey) {
+  const key = presetKey || 'samsung-3.5kw';
+  const preset = AC_PRESETS[key];
+  const id = acIdCounter++;
+  acCards.push({ id, preset: key, ...preset });
+  renderACList();
+}
+
+function removeACUnit(id) {
+  acCards = acCards.filter(c => c.id !== id);
+  renderACList();
+}
+
+function renderACList() {
+  acListEl.innerHTML = '';
+  acCards.forEach(card => {
+    const div = document.createElement('div');
+    div.className = 'ac-card';
+    div.innerHTML = `
+      <div class="ac-card-header">
+        <span class="ac-card-title">${card.name} <span style="font-size:10px;color:var(--fg3)">#${card.id+1}</span></span>
+        <button class="ac-remove" data-id="${card.id}">&times;</button>
+      </div>
+      <div class="ac-preset-row">
+        ${Object.entries(AC_PRESETS).map(([k, v]) =>
+          `<button class="ac-preset${k === card.preset ? ' active' : ''}" data-id="${card.id}" data-key="${k}">${v.name}</button>`
+        ).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;color:var(--fg2)">
+        <div>Prietok: <b>${card.airflowM3h}</b> m³/h</div>
+        <div>Supply: <b>${card.supplyTemp}</b>°C</div>
+        <div>Výkon: <b>${(card.coolingW/1000).toFixed(1)}</b> kW</div>
+        <div>Typ: <b>${card.type === 'wall' ? 'Nástenná' : card.type === 'ceiling' ? 'Kazetová' : 'Stojacia'}</b></div>
+      </div>
+    `;
+    acListEl.appendChild(div);
+  });
+
+  // Bind remove
+  acListEl.querySelectorAll('.ac-remove').forEach(btn => {
+    btn.addEventListener('click', () => removeACUnit(+btn.dataset.id));
+  });
+
+  // Bind preset switch
+  acListEl.querySelectorAll('.ac-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card = acCards.find(c => c.id === +btn.dataset.id);
+      if (!card) return;
+      const preset = AC_PRESETS[btn.dataset.key];
+      Object.assign(card, { preset: btn.dataset.key, ...preset });
+      renderACList();
+    });
+  });
+}
+
+$('addAC').addEventListener('click', () => addACUnit());
+
+// Add default unit
+addACUnit('samsung-3.5kw');
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Run simulation
+// ═══════════════════════════════════════════════════════════════════════════════
+
+runBtn.addEventListener('click', runSimulation);
+resetBtn.addEventListener('click', resetSimulation);
+
+function runSimulation() {
+  statusText.textContent = 'Simulujem...';
+  runBtn.disabled = true;
+
+  // Small delay for UI update
+  setTimeout(() => {
+    const room = {
+      width: +roomW.value,
+      length: +roomL.value,
+      height: +roomH.value,
+      initialTemp: +initTemp.value,
+      outdoorTemp: +outTemp.value,
+      internalGains: (+occupants.value) * 75 + (+equipW.value),
+      insulMul: +insulation.value,
+      constMul: +construction.value,
+    };
+
+    const units = acCards.map(c => ({
+      id: `ac-${c.id}`,
+      type: c.type,
+      airflowM3h: c.airflowM3h,
+      supplyTemp: c.supplyTemp,
+      coolingCapacityW: c.coolingW,
+    }));
+
+    const isSpatial = $('simModel').value === 'spatial';
+
+    const params = {
+      mixingEfficiency: +($('mixEff')?.value ?? 0.70),
+      timeStepS: +simStep.value,
+      totalTimeS: +simDuration.value,
+      outputIntervalS: 60,
+      targetTemp: +targetTemp.value,
+      acMode: $('acMode').value,
+      // Spatial params
+      diffusivity: +$('diffAlpha').value,
+      acPosition: $('acPosition').value,
+      adiabatic: $('wallMode').value === 'adiabatic',
+      jetPenetration: +$('jetPen').value,
+    };
+
+    const t0 = performance.now();
+    if (isSpatial) {
+      simResult = simulateSpatial(room, units, params);
+    } else {
+      simResult = simulate(room, units, params);
+    }
+    const elapsed = (performance.now() - t0).toFixed(1);
+
+    updateMetrics();
+    drawCoolingCurve();
+    drawDataTable();
+
+    const activeTab = document.querySelector('.tab.active').dataset.tab;
+    if (activeTab === 'heatmap') drawHeatMap();
+
+    const modelLabel = isSpatial ? `2D ${simResult.summary.gridSize || ''}` : 'Lumped';
+    statusText.textContent = `${modelLabel} — ${elapsed} ms — ${simResult.points.length} bodov`;
+    runBtn.disabled = false;
+  });
+}
+
+function resetSimulation() {
+  simResult = null;
+  metricsStrip.style.display = 'none';
+  chartWrap.innerHTML = `
+    <div style="text-align:center;color:var(--fg3)">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="#ccc" stroke-width="2"><path d="M6 36 Q16 36 20 24 Q24 12 32 18 Q40 24 42 12"/><line x1="6" y1="6" x2="6" y2="40"/><line x1="4" y1="40" x2="44" y2="40"/></svg>
+      <div style="margin-top:8px;font-size:12px">Nakonfiguruj miestnosť a AC jednotky, potom spusti simuláciu</div>
+    </div>`;
+  dataBody.innerHTML = '';
+  statusText.textContent = 'Pripravené';
+
+  // Clear heatmap
+  stopHmPlayback();
+  hmGrids = [];
+  hmSlider.max = 0; hmSlider.value = 0;
+  $('hmTimeLabel').textContent = '0:00';
+  $('hmTempLabel').textContent = '—°C';
+  $('hmPowerLabel').textContent = '—%';
+  const hc = $('hmCanvas');
+  const ctx = hc.getContext('2d');
+  ctx.clearRect(0, 0, hc.width, hc.height);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Update metrics
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function updateMetrics() {
+  if (!simResult) return;
+  const s = simResult.summary;
+  metricsStrip.style.display = '';
+
+  mTime.innerHTML = (s.timeToTargetMin > 0 ? s.timeToTargetMin : '—') + '<span>min</span>';
+  mTime.className = 'metric-value ' + (s.timeToTargetMin > 0 && s.timeToTargetMin < 60 ? 'good' : 'warn');
+
+  mFinal.innerHTML = s.finalAirTemp.toFixed(1) + '<span>°C</span>';
+  mFinal.className = 'metric-value ' + (s.finalAirTemp <= +targetTemp.value + 2 ? 'good' : 'warn');
+
+  mEnergy.innerHTML = s.totalEnergyKwh.toFixed(1) + '<span>kWh</span>';
+  mEnergy.className = 'metric-value';
+
+  const kw = s.avgCoolingPowerW > 1000 ? (s.avgCoolingPowerW / 1000).toFixed(1) : s.avgCoolingPowerW;
+  const kwUnit = s.avgCoolingPowerW > 1000 ? 'kW' : 'W';
+  mPower.innerHTML = kw + '<span>' + kwUnit + '</span>';
+  mPower.className = 'metric-value';
+
+  mVol.innerHTML = s.roomVolumeM3 + '<span>m³</span>';
+  mFlow.innerHTML = s.totalAirflowM3h + '<span>m³/h</span>';
+  if (s.gridSize) mFlow.innerHTML = s.gridSize;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Cooling Curve (SVG)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function drawCoolingCurve() {
+  if (!simResult || simResult.points.length < 2) return;
+  const pts = simResult.points;
+
+  const W = 720, H = 340;
+  const pad = { top: 24, right: 42, bottom: 40, left: 52 };
+  const w = W - pad.left - pad.right;
+  const h = H - pad.top - pad.bottom;
+
+  const minT = Math.floor(Math.min(...pts.map(p => Math.min(p.airTemp, p.massTemp))) - 1);
+  const maxT = Math.ceil(Math.max(...pts.map(p => Math.max(p.airTemp, p.massTemp))) + 1);
+  const maxTime = pts[pts.length - 1].timeMin;
+
+  const sx = m => pad.left + (m / maxTime) * w;
+  const sy = t => pad.top + ((maxT - t) / (maxT - minT)) * h;
+
+  // Air temp path
+  const airPath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${sx(p.timeMin).toFixed(1)},${sy(p.airTemp).toFixed(1)}`).join(' ');
+  // Mass temp path
+  const massPath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${sx(p.timeMin).toFixed(1)},${sy(p.massTemp).toFixed(1)}`).join(' ');
+
+  // Y ticks
+  const yTicks = [];
+  for (let t = Math.ceil(minT); t <= Math.floor(maxT); t += 2) yTicks.push(t);
+  // X ticks
+  const xTicks = [];
+  const xStep = maxTime <= 60 ? 10 : maxTime <= 120 ? 15 : 30;
+  for (let m = 0; m <= maxTime; m += xStep) xTicks.push(m);
+
+  const target = +targetTemp.value;
+  const ttm = simResult.summary.timeToTargetMin;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="font-family:Inter,Segoe UI,system-ui,sans-serif">`;
+
+  // Grid
+  yTicks.forEach(t => {
+    svg += `<line x1="${pad.left}" y1="${sy(t)}" x2="${W-pad.right}" y2="${sy(t)}" stroke="#e8e5dd" stroke-width="1"/>`;
+    svg += `<text x="${pad.left-8}" y="${sy(t)+4}" text-anchor="end" font-size="10" fill="#999">${t}°</text>`;
+  });
+  xTicks.forEach(m => {
+    svg += `<line x1="${sx(m)}" y1="${pad.top}" x2="${sx(m)}" y2="${H-pad.bottom}" stroke="#e8e5dd" stroke-width="1"/>`;
+    svg += `<text x="${sx(m)}" y="${H-pad.bottom+16}" text-anchor="middle" font-size="10" fill="#999">${m}m</text>`;
+  });
+
+  // Target line
+  if (target >= minT && target <= maxT) {
+    svg += `<line x1="${pad.left}" y1="${sy(target)}" x2="${W-pad.right}" y2="${sy(target)}" stroke="#1D9E75" stroke-width="1" stroke-dasharray="4 3" opacity="0.6"/>`;
+    svg += `<text x="${W-pad.right+4}" y="${sy(target)+3}" font-size="9" fill="#1D9E75" opacity="0.8">cieľ ${target}°C</text>`;
+  }
+
+  // Time to target marker
+  if (ttm > 0 && ttm <= maxTime) {
+    svg += `<line x1="${sx(ttm)}" y1="${pad.top}" x2="${sx(ttm)}" y2="${H-pad.bottom}" stroke="#1D9E75" stroke-width="1" stroke-dasharray="2 2" opacity="0.4"/>`;
+    svg += `<text x="${sx(ttm)}" y="${pad.top-6}" text-anchor="middle" font-size="9" fill="#1D9E75" font-weight="600">${ttm}min</text>`;
+  }
+
+  // Power % curve (right Y axis, filled area)
+  const spY = pct => pad.top + ((100 - pct) / 100) * h; // 100% = top, 0% = bottom
+  const powerPath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${sx(p.timeMin).toFixed(1)},${spY(p.powerPct ?? 100).toFixed(1)}`).join(' ');
+  const powerFill = powerPath + ` L${sx(pts[pts.length-1].timeMin).toFixed(1)},${pad.top + h} L${pad.left},${pad.top + h} Z`;
+  svg += `<path d="${powerFill}" fill="#1D9E75" fill-opacity="0.07"/>`;
+  svg += `<path d="${powerPath}" fill="none" stroke="#1D9E75" stroke-width="1.5" opacity="0.5"/>`;
+
+  // Right Y axis labels for power %
+  [0, 25, 50, 75, 100].forEach(pct => {
+    svg += `<text x="${W-pad.right+8}" y="${spY(pct)+4}" font-size="9" fill="#1D9E75" opacity="0.6">${pct}%</text>`;
+  });
+
+  // Mass curve (subtle)
+  svg += `<path d="${massPath}" fill="none" stroke="#aaa" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>`;
+
+  // Air curve (main)
+  svg += `<path d="${airPath}" fill="none" stroke="#D85A30" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+  // Dots every 10 minutes
+  pts.filter(p => p.timeS % 600 === 0 && p.timeS > 0).forEach(p => {
+    svg += `<circle cx="${sx(p.timeMin)}" cy="${sy(p.airTemp)}" r="3" fill="#D85A30"/>`;
+  });
+
+  // Legend
+  svg += `<circle cx="${pad.left+10}" cy="${H-8}" r="4" fill="#D85A30"/>`;
+  svg += `<text x="${pad.left+18}" y="${H-5}" font-size="9" fill="#666">Vzduch</text>`;
+  svg += `<line x1="${pad.left+62}" y1="${H-8}" x2="${pad.left+78}" y2="${H-8}" stroke="#aaa" stroke-width="1" stroke-dasharray="3 3"/>`;
+  svg += `<text x="${pad.left+82}" y="${H-5}" font-size="9" fill="#999">Tepelná masa</text>`;
+  svg += `<line x1="${pad.left+160}" y1="${H-8}" x2="${pad.left+176}" y2="${H-8}" stroke="#1D9E75" stroke-width="1.5" opacity="0.5"/>`;
+  svg += `<text x="${pad.left+180}" y="${H-5}" font-size="9" fill="#1D9E75">Výkon %</text>`;
+  svg += `<line x1="${pad.left+218}" y1="${H-8}" x2="${pad.left+234}" y2="${H-8}" stroke="#1D9E75" stroke-width="1" stroke-dasharray="4 3"/>`;
+  svg += `<text x="${pad.left+238}" y="${H-5}" font-size="9" fill="#1D9E75">Cieľ</text>`;
+
+  // Axis labels
+  svg += `<text x="${W/2}" y="${H-2}" text-anchor="middle" font-size="10" fill="#999">Čas (minúty)</text>`;
+
+  svg += `</svg>`;
+  chartWrap.innerHTML = svg;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Data Table
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function drawDataTable() {
+  if (!simResult) return;
+  const pts = simResult.points.filter(p => p.timeS % 300 === 0); // every 5 min
+  dataBody.innerHTML = pts.map(p => `
+    <tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:4px 8px">${p.timeMin}</td>
+      <td style="padding:4px 8px;text-align:right;font-weight:600;color:${tempColor(p.airTemp)}">${p.airTemp.toFixed(1)}</td>
+      <td style="padding:4px 8px;text-align:right;color:var(--fg2)">${p.massTemp.toFixed(1)}</td>
+      <td style="padding:4px 8px;text-align:right;font-weight:600;color:var(--accent)">${p.powerPct ?? 100}%</td>
+      <td style="padding:4px 8px;text-align:right">${p.coolingPowerW}</td>
+      <td style="padding:4px 8px;text-align:right">${p.energyKwh.toFixed(2)}</td>
+    </tr>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Animated Heat Map
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let hmGrids = [];      // pre-computed spatial grids per time step
+let hmPlaying = false;
+let hmAnimId = null;
+let hmLastTick = 0;
+const HM_GRID_W = 30;  // spatial resolution (cells across room width)
+
+// Pre-compute 2D temperature grids for every simulation point
+function computeSpatialGrids() {
+  if (!simResult) return;
+  hmGrids = [];
+
+  // If spatial simulation was used, we have real grids — use them directly
+  if (simResult.grids && simResult.grids.length > 0) {
+    for (let i = 0; i < simResult.grids.length; i++) {
+      const g = simResult.grids[i];
+      hmGrids.push({ grid: g.grid, gw: g.gw, gh: g.gh, pt: simResult.points[i] });
+    }
+    return;
+  }
+
+  // Fallback: fake spatial distribution for lumped model
+  const rw = +roomW.value, rl = +roomL.value;
+  const gh = Math.round(HM_GRID_W * (rl / rw));
+  const gw = HM_GRID_W;
+  const outdoorT = +outTemp.value;
+
+  // AC positions (normalized 0..1) — placed on top wall, evenly spaced
+  const acPositions = acCards.map((_, i) => ({
+    fx: (i + 1) / (acCards.length + 1),
+    fy: 0, // top wall
+  }));
+
+  for (const pt of simResult.points) {
+    const avgT = pt.airTemp;
+    const massT = pt.massTemp;
+    const pwr = (pt.powerPct ?? 100) / 100;
+
+    // Build spatial grid using diffusion-like distribution
+    const grid = new Float32Array(gw * gh);
+
+    // Step 1: Fill with average air temperature
+    grid.fill(avgT);
+
+    // Step 2: Apply AC cold zones — cold air spreads from AC position
+    for (const ac of acPositions) {
+      const acGx = Math.round(ac.fx * (gw - 1));
+      const acGy = Math.round(ac.fy * (gh - 1));
+      const coldDelta = pwr * Math.max(0, avgT - (+targetTemp.value)) * 0.6;
+      const reach = Math.max(gw, gh) * 0.7;
+      for (let y = 0; y < gh; y++) {
+        for (let x = 0; x < gw; x++) {
+          const dx = x - acGx;
+          const dy = y - acGy;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          const falloff = Math.exp(-dist * dist / (reach * reach * 0.15));
+          grid[y * gw + x] -= coldDelta * falloff;
+        }
+      }
+    }
+
+    // Step 3: Wall heat — edges receive heat from outdoors proportional to (outdoor - local)
+    for (let y = 0; y < gh; y++) {
+      for (let x = 0; x < gw; x++) {
+        const edgeX = Math.min(x, gw - 1 - x);
+        const edgeY = Math.min(y, gh - 1 - y);
+        const edgeDist = Math.min(edgeX, edgeY);
+        if (edgeDist < 3) {
+          const wallFactor = (3 - edgeDist) / 3;
+          const localT = grid[y * gw + x];
+          const heatGain = wallFactor * (outdoorT - localT) * 0.15;
+          grid[y * gw + x] += heatGain;
+        }
+      }
+    }
+
+    // Step 4: Smooth pass (simple box blur to make it look natural)
+    const smoothed = new Float32Array(gw * gh);
+    for (let y = 0; y < gh; y++) {
+      for (let x = 0; x < gw; x++) {
+        let sum = 0, cnt = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = x + dx, ny = y + dy;
+            if (nx >= 0 && nx < gw && ny >= 0 && ny < gh) {
+              sum += grid[ny * gw + nx];
+              cnt++;
+            }
+          }
+        }
+        smoothed[y * gw + x] = sum / cnt;
+      }
+    }
+
+    hmGrids.push({ grid: smoothed, gw, gh, pt });
+  }
+}
+
+// Render a specific frame
+function renderHeatMapFrame(frameIdx) {
+  if (!hmGrids.length) return;
+  frameIdx = Math.max(0, Math.min(frameIdx, hmGrids.length - 1));
+
+  const { grid, gw, gh, pt } = hmGrids[frameIdx];
+
+  const canvas = $('hmCanvas');
+  const wrap = canvas.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  const cw = wrap.clientWidth;
+  const ch = wrap.clientHeight;
+  canvas.width = cw * dpr;
+  canvas.height = ch * dpr;
+  canvas.style.width = cw + 'px';
+  canvas.style.height = ch + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const rw = +roomW.value, rl = +roomL.value;
+  const margin = 50;
+  const scale = Math.min((cw - margin*2) / rw, (ch - margin*2) / rl);
+  const ox = (cw - rw * scale) / 2;
+  const oy = (ch - rl * scale) / 2;
+
+  // Clear
+  ctx.fillStyle = '#f8f7f4';
+  ctx.fillRect(0, 0, cw, ch);
+
+  // Draw cells
+  const cellW = (rw * scale) / gw;
+  const cellH = (rl * scale) / gh;
+
+  // Use ImageData for performance
+  const imgW = Math.ceil(rw * scale);
+  const imgH = Math.ceil(rl * scale);
+  const imgData = ctx.createImageData(imgW, imgH);
+  const data = imgData.data;
+
+  for (let py = 0; py < imgH; py++) {
+    for (let px = 0; px < imgW; px++) {
+      // Map pixel to grid with bilinear interpolation
+      const gx = (px / imgW) * (gw - 1);
+      const gy = (py / imgH) * (gh - 1);
+      const x0 = Math.floor(gx), y0 = Math.floor(gy);
+      const x1 = Math.min(x0 + 1, gw - 1), y1 = Math.min(y0 + 1, gh - 1);
+      const fx = gx - x0, fy = gy - y0;
+      const t00 = grid[y0 * gw + x0], t10 = grid[y0 * gw + x1];
+      const t01 = grid[y1 * gw + x0], t11 = grid[y1 * gw + x1];
+      const t = t00 * (1-fx)*(1-fy) + t10 * fx*(1-fy) + t01 * (1-fx)*fy + t11 * fx*fy;
+      const rgb = tempToRGB(t);
+      const idx = (py * imgW + px) * 4;
+      data[idx] = rgb[0]; data[idx+1] = rgb[1]; data[idx+2] = rgb[2]; data[idx+3] = 255;
+    }
+  }
+  ctx.putImageData(imgData, ox, oy);
+
+  // Room outline
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(ox, oy, rw * scale, rl * scale);
+
+  // AC unit indicators
+  acCards.forEach((ac, i) => {
+    const acW = 44;
+    const acX = ox + (rw * scale / (acCards.length + 1)) * (i + 1) - acW/2;
+    ctx.fillStyle = '#1D9E75';
+    ctx.beginPath();
+    ctx.roundRect(acX, oy - 10, acW, 12, 3);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 8px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('AC ' + (i+1), acX + acW/2, oy - 1);
+  });
+
+  // Dimensions
+  ctx.fillStyle = '#666';
+  ctx.font = '11px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${rw} m`, ox + rw*scale/2, oy + rl*scale + 22);
+  ctx.save();
+  ctx.translate(ox - 20, oy + rl*scale/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText(`${rl} m`, 0, 0);
+  ctx.restore();
+
+  // Center temperature annotation
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.beginPath();
+  ctx.roundRect(ox + rw*scale/2 - 48, oy + rl*scale/2 - 18, 96, 36, 6);
+  ctx.fill();
+  ctx.fillStyle = '#333';
+  ctx.font = 'bold 16px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${pt.airTemp.toFixed(1)}°C`, ox + rw*scale/2, oy + rl*scale/2 + 2);
+  ctx.font = '9px Inter, sans-serif';
+  ctx.fillStyle = '#888';
+  ctx.fillText(`výkon: ${pt.powerPct ?? 100}%`, ox + rw*scale/2, oy + rl*scale/2 + 14);
+
+  // Update labels
+  const mins = Math.floor(pt.timeMin);
+  const secs = Math.round((pt.timeMin - mins) * 60);
+  $('hmTimeLabel').textContent = `${mins}:${String(secs).padStart(2, '0')}`;
+  $('hmTempLabel').textContent = `${pt.airTemp.toFixed(1)}°C`;
+  $('hmPowerLabel').textContent = `${pt.powerPct ?? 100}%`;
+}
+
+function tempToRGB(t) {
+  const norm = Math.max(0, Math.min(1, (t - 16) / 14));
+  const stops = [
+    [43, 108, 176], [56, 178, 172], [72, 187, 120],
+    [236, 201, 75], [237, 137, 54], [229, 62, 62],
+  ];
+  const idx = norm * (stops.length - 1);
+  const lo = Math.floor(idx);
+  const hi = Math.min(lo + 1, stops.length - 1);
+  const frac = idx - lo;
+  return [
+    Math.round(stops[lo][0] + (stops[hi][0] - stops[lo][0]) * frac),
+    Math.round(stops[lo][1] + (stops[hi][1] - stops[lo][1]) * frac),
+    Math.round(stops[lo][2] + (stops[hi][2] - stops[lo][2]) * frac),
+  ];
+}
+
+// Playback controls
+const hmSlider = $('hmSlider');
+const hmPlayBtn = $('hmPlay');
+
+hmSlider.addEventListener('input', () => {
+  renderHeatMapFrame(+hmSlider.value);
+});
+
+hmPlayBtn.addEventListener('click', () => {
+  if (hmPlaying) {
+    stopHmPlayback();
+  } else {
+    startHmPlayback();
+  }
+});
+
+function startHmPlayback() {
+  if (!hmGrids.length) return;
+  hmPlaying = true;
+  hmPlayBtn.textContent = '⏸ Pause';
+  if (+hmSlider.value >= hmGrids.length - 1) hmSlider.value = 0;
+  renderHeatMapFrame(0);
+  const tick = () => {
+    if (!hmPlaying) return;
+    let idx = +hmSlider.value + 1;
+    if (idx >= hmGrids.length) {
+      stopHmPlayback();
+      return;
+    }
+    hmSlider.value = idx;
+    renderHeatMapFrame(idx);
+  };
+  const speed = +$('hmSpeed').value;
+  hmAnimId = setInterval(tick, Math.round(500 / speed));
+}
+
+function stopHmPlayback() {
+  hmPlaying = false;
+  hmPlayBtn.textContent = '▶ Play';
+  if (hmAnimId) { clearInterval(hmAnimId); hmAnimId = null; }
+}
+
+// Update interval when speed changes during playback
+$('hmSpeed').addEventListener('change', () => {
+  if (hmPlaying) {
+    if (hmAnimId) clearInterval(hmAnimId);
+    const speed = +$('hmSpeed').value;
+    const tick = () => {
+      if (!hmPlaying) return;
+      let idx = +hmSlider.value + 1;
+      if (idx >= hmGrids.length) { stopHmPlayback(); return; }
+      hmSlider.value = idx;
+      renderHeatMapFrame(idx);
+    };
+    hmAnimId = setInterval(tick, Math.round(500 / speed));
+  }
+});
+
+// Initialize heat map when tab is shown
+function drawHeatMap() {
+  if (!simResult) return;
+  computeSpatialGrids();
+  hmSlider.max = hmGrids.length - 1;
+  hmSlider.value = 0;
+  renderHeatMapFrame(0);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Color utilities
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function tempToColor(t) {
+  // 16°C = blue → 30°C = red
+  const norm = Math.max(0, Math.min(1, (t - 16) / 14));
+  // Blue → Cyan → Green → Yellow → Orange → Red
+  const stops = [
+    [43, 108, 176],   // 0.0 - blue
+    [56, 178, 172],   // 0.2 - teal
+    [72, 187, 120],   // 0.4 - green
+    [236, 201, 75],   // 0.6 - yellow
+    [237, 137, 54],   // 0.8 - orange
+    [229, 62, 62],    // 1.0 - red
+  ];
+  const idx = norm * (stops.length - 1);
+  const lo = Math.floor(idx);
+  const hi = Math.min(lo + 1, stops.length - 1);
+  const frac = idx - lo;
+  const r = Math.round(stops[lo][0] + (stops[hi][0] - stops[lo][0]) * frac);
+  const g = Math.round(stops[lo][1] + (stops[hi][1] - stops[lo][1]) * frac);
+  const b = Math.round(stops[lo][2] + (stops[hi][2] - stops[lo][2]) * frac);
+  return `rgb(${r},${g},${b})`;
+}
+
+function tempColor(t) {
+  if (t <= 22) return 'var(--accent)';
+  if (t <= 26) return '#888';
+  return 'var(--accent2)';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Resize handler for heat map
+// ═══════════════════════════════════════════════════════════════════════════════
+
+window.addEventListener('resize', () => {
+  const activeTab = document.querySelector('.tab.active')?.dataset.tab;
+  if (activeTab === 'heatmap' && simResult) drawHeatMap();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Initial state
+// ═══════════════════════════════════════════════════════════════════════════════
+
+updateVolume();
+</script>
+</body>
+</html>

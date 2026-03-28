@@ -21,7 +21,8 @@ export function setTool(t) {
     south: 'Klikni kdekoľvek – najbližšia strana = JUH',
     west: 'Klikni kdekoľvek – najbližšia strana = ZÁPAD',
     door: 'Klikni na stenu pre dvere',
-    ac: 'Klikni na stenu pre klimu',
+    ac: 'Klikni na stenu pre nástennú klimu',
+    ceiling: 'Klikni do miestnosti pre stropnú kazetu',
     ward: 'Klikni do izby pre skriňu',
     temp: 'Klikni na izbu = zmeniť teplotu',
   };
@@ -76,13 +77,20 @@ export function buildUnitCards() {
   scene.acUnits.forEach((u, i) => {
     const card = document.createElement('div');
     card.className = 'ucard' + (u.on ? '' : ' off');
+    const modelOpts = u.ceiling
+      ? `<option value="6"${u.model === 6 ? ' selected' : ''}>5kW</option>` +
+        `<option value="7"${u.model === 7 ? ' selected' : ''}>7.1kW</option>` +
+        `<option value="8"${u.model === 8 ? ' selected' : ''}>10kW</option>` +
+        `<option value="9"${u.model === 9 ? ' selected' : ''}>14kW</option>`
+      : `<option value="0"${u.model === 0 ? ' selected' : ''}>2.0kW</option>` +
+        `<option value="1"${u.model === 1 ? ' selected' : ''}>2.5kW</option>` +
+        `<option value="2"${u.model === 2 ? ' selected' : ''}>3.5kW</option>` +
+        `<option value="3"${u.model === 3 ? ' selected' : ''}>5.0kW</option>` +
+        `<option value="4"${u.model === 4 ? ' selected' : ''}>7.0kW</option>` +
+        `<option value="5"${u.model === 5 ? ' selected' : ''}>10kW</option>`;
     card.innerHTML =
       `<span class="unum">${i + 1}</span>` +
-      `<select class="umd" data-i="${i}">` +
-        `<option value="0"${u.model === 0 ? ' selected' : ''}>2.5kW</option>` +
-        `<option value="1"${u.model === 1 ? ' selected' : ''}>3.5kW</option>` +
-        `<option value="2"${u.model === 2 ? ' selected' : ''}>5.0kW</option>` +
-      `</select>` +
+      `<select class="umd" data-i="${i}">${modelOpts}</select>` +
       `<select class="umo" data-i="${i}">` +
         `<option value="0"${u.mode === 0 ? ' selected' : ''}>Tichý</option>` +
         `<option value="1"${u.mode === 1 ? ' selected' : ''}>Norm</option>` +

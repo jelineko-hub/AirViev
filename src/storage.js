@@ -20,6 +20,13 @@ export function getState() {
     insul: dom.insulation.value,
     extS: dom.extSouth.value,
     extW: dom.extWest.value,
+    roomTempVal: dom.roomTemp ? dom.roomTemp.value : '26',
+    adv: dom.adCool ? {
+      cool: dom.adCool.value, drag: dom.adDrag.value, youth: dom.adYouth.value,
+      difBase: dom.adDifBase.value, difGrow: dom.adDifGrow.value,
+      wallDist: dom.adWallDist.value, timeMul: dom.adTimeMul.value,
+      adiab: dom.adAdiab.checked,
+    } : undefined,
   };
 }
 
@@ -36,6 +43,18 @@ export function applyState(s) {
     if (s.insul) dom.insulation.value = s.insul;
     if (s.extS) dom.extSouth.value = s.extS;
     if (s.extW) dom.extWest.value = s.extW;
+    if (s.roomTempVal && dom.roomTemp) dom.roomTemp.value = s.roomTempVal;
+    if (s.adv && dom.adCool) {
+      const a = s.adv;
+      if (a.cool) { dom.adCool.value = a.cool; dom.adCoolV.textContent = (+a.cool/100).toFixed(1)+'x'; }
+      if (a.drag) { dom.adDrag.value = a.drag; dom.adDragV.textContent = '.'+a.drag; }
+      if (a.youth) { dom.adYouth.value = a.youth; dom.adYouthV.textContent = (+a.youth/10).toFixed(1); }
+      if (a.difBase) { dom.adDifBase.value = a.difBase; dom.adDifBaseV.textContent = '.'+String(a.difBase).padStart(3,'0'); }
+      if (a.difGrow) { dom.adDifGrow.value = a.difGrow; dom.adDifGrowV.textContent = '.'+String(a.difGrow).padStart(3,'0'); }
+      if (a.wallDist) { dom.adWallDist.value = a.wallDist; dom.adWallDistV.textContent = (+a.wallDist/10)+'m'; }
+      if (a.timeMul) { dom.adTimeMul.value = a.timeMul; dom.adTimeMulV.textContent = a.timeMul+'x'; }
+      if (a.adiab != null) dom.adAdiab.checked = a.adiab;
+    }
     detectRooms();
     // Restore room temperatures
     if (s.roomTemps) {

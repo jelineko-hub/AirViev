@@ -15,14 +15,14 @@ function addWall(x1, y1, x2, y2) {
 }
 
 function removeWallAndRefs(wi) {
-  // Remove objects referencing this wall
+  // Remove objects referencing this wall (skip ceiling units — they don't reference walls)
   scene.windows = scene.windows.filter(o => o.wi !== wi);
   scene.doors = scene.doors.filter(o => o.wi !== wi);
-  scene.acUnits = scene.acUnits.filter(o => o.wi !== wi);
+  scene.acUnits = scene.acUnits.filter(o => o.ceiling || o.wi !== wi);
   // Adjust indices for objects on walls after the removed one
   scene.windows.forEach(o => { if (o.wi > wi) o.wi--; });
   scene.doors.forEach(o => { if (o.wi > wi) o.wi--; });
-  scene.acUnits.forEach(o => { if (o.wi > wi) o.wi--; });
+  scene.acUnits.forEach(o => { if (!o.ceiling && o.wi > wi) o.wi--; });
   scene.walls.splice(wi, 1);
 }
 
@@ -547,10 +547,26 @@ export function setupEditorEvents() {
         dom.statusMsg.textContent = 'Tu sa klima nezmestí — príliš blízko rohu alebo inej steny';
         return;
       }
-      scene.acUnits.push({ wi: preview.wi, pos: preview.pos, side: preview.side, model: 1, mode: 1, on: true });
+      scene.acUnits.push({ wi: preview.wi, pos: preview.pos, side: preview.side, model: 2, mode: 1, on: true });
       dom.statusMsg.textContent = 'Klima umiestnená!';
       checkReady(); autoSave();
     }
+  }
+
+  function handleCeilingAcClick(mx, my) {
+    const meterX = pToM(mx - OX);
+    const meterY = pToM(my - OY);
+    const ri = roomAtMeter(meterX, meterY);
+    if (ri < 0) {
+      dom.statusMsg.textContent = 'Kazeta musí byť vnútri miestnosti!';
+      return;
+    }
+    // Place at click position (snapped to 0.2m grid)
+    const cx = snapGrid2(meterX);
+    const cy = snapGrid2(meterY);
+    scene.acUnits.push({ cx, cy, ceiling: true, model: 7, mode: 1, on: true });
+    dom.statusMsg.textContent = 'Stropná kazeta umiestnená!';
+    checkReady(); autoSave();
   }
 
   function handleFurnitureClick(mx, my) {
@@ -582,8 +598,19 @@ export function setupEditorEvents() {
     if (editor.tool === 'south' || editor.tool === 'west') { handleSolarClick(mx, my); return; }
     if (editor.tool === 'temp') { handleTempClick(mx, my); return; }
     if (editor.tool === 'win' || editor.tool === 'door' || editor.tool === 'ac') { handleWallToolClick(mx, my); return; }
+    if (editor.tool === 'ceiling') { handleCeilingAcClick(mx, my); return; }
     if (editor.tool === 'ward') { handleFurnitureClick(mx, my); }
   });
+
+  // Room temperature select — sets all rooms at once
+  if (dom.roomTemp) {
+    dom.roomTemp.addEventListener('change', () => {
+      const t = +dom.roomTemp.value;
+      scene.rooms.forEach(r => { r.temp = t; });
+      dom.statusMsg.textContent = `Všetky izby: ${t}°C`;
+      autoSave();
+    });
+  }
 
   // Wheel zoom
   cv.addEventListener('wheel', (e) => {

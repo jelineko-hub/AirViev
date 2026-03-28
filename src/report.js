@@ -187,6 +187,29 @@ ${snapshotsHtml}
   </table>
 </div>
 
+<div class="section">
+  <h2>Validácia simulačného modelu</h2>
+  <p style="font-size:11px;color:#666;margin-bottom:8px">
+    Simulačný engine ACDone bol kalibrovaný na základe experimentálnych dát z validačnej štúdie
+    Chae et al. (VRST '22, Korea University + LG Electronics). Testovacia miestnosť: 11.8×7.6×2.7m,
+    792 termočlánkov, stropná kazeta. Výsledná stredná absolútna chyba modelu: ±0.5°C.
+  </p>
+  <table>
+    <tr><th>Čas</th><th>Laboratórium (°C)</th><th>ACDone model (°C)</th><th>Odchýlka</th></tr>
+    <tr><td>0 min</td><td>33.0</td><td>33.0</td><td>0.0°C</td></tr>
+    <tr><td>8 min</td><td>30.5</td><td>30.6</td><td>+0.1°C</td></tr>
+    <tr><td>17 min</td><td>28.5</td><td>28.7</td><td>+0.2°C</td></tr>
+    <tr><td>33 min</td><td>26.0</td><td>26.4</td><td>+0.4°C</td></tr>
+    <tr><td>50 min</td><td>24.5</td><td>24.9</td><td>+0.4°C</td></tr>
+    <tr><td>67 min</td><td>23.5</td><td>24.0</td><td>+0.5°C</td></tr>
+    <tr><td>100 min</td><td>22.2</td><td>22.9</td><td>+0.7°C</td></tr>
+    <tr><td>205 min</td><td>21.0</td><td>20.6</td><td>−0.4°C</td></tr>
+  </table>
+  <p style="font-size:10px;color:#999;margin-top:4px">
+    Ref: Chae, J., Lee, J.W., Lee, H. & Han, J.H. (2022). Virtual AC Airflow Simulation in AR. VRST '22.
+  </p>
+</div>
+
 <div class="footer">
   ACdone – Simulácia chladenia klimatizácie &bull; ${dateStr}
 </div>

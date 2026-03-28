@@ -11,9 +11,18 @@ export const FURNITURE_DEFS = {
 };
 
 export const AC_MODELS = [
+  // Nástenné
+  { name: '2.0kW', width: 72, thrust: 3.2, cool: 0.014 },
   { name: '2.5kW', width: 77, thrust: 4,   cool: 0.018 },
   { name: '3.5kW', width: 80, thrust: 5.5, cool: 0.025 },
   { name: '5.0kW', width: 90, thrust: 8.4, cool: 0.035 },
+  { name: '7.0kW', width: 95, thrust: 10,  cool: 0.042 },
+  { name: '10kW',  width: 100, thrust: 12, cool: 0.055 },
+  // Kazetové (stropné)
+  { name: '5kW Kazeta',   width: 60, thrust: 5.5, cool: 0.020, ceiling: true },
+  { name: '7.1kW Kazeta', width: 70, thrust: 7,   cool: 0.025, ceiling: true },
+  { name: '10kW Kazeta',  width: 75, thrust: 8.5, cool: 0.032, ceiling: true },
+  { name: '14kW Kazeta',  width: 80, thrust: 10,  cool: 0.038, ceiling: true },
 ];
 
 // ── Canvas state ──
@@ -30,7 +39,7 @@ export const scene = {
   rooms: [],        // [{cells, cx, cy, area, temp}] — auto-detected from walls
   windows: [],      // [{wi, pos}] — wi=wall index, pos=0-1 along wall
   furniture: [],    // [{x, y, w, h, l, d, sol}]
-  acUnits: [],      // [{wi, pos, model, mode, on}]
+  acUnits: [],      // [{wi, pos, model, mode, on}] wall, or [{cx, cy, model, mode, on, ceiling:true}] ceiling
   doors: [],        // [{wi, pos}]
   southSide: null,  // 'top'|'bottom'|'left'|'right'
   westSide: null,
@@ -162,6 +171,7 @@ export function cacheDom() {
   dom.insulation = document.getElementById('insul');
   dom.extSouth = document.getElementById('extS');
   dom.extWest = document.getElementById('extW');
+  dom.roomTemp = document.getElementById('roomTemp');
   dom.edgeSoft = document.getElementById('eS');
   dom.edgeSoftVal = document.getElementById('eSV');
   dom.diffusion = document.getElementById('dF');
@@ -169,4 +179,23 @@ export function cacheDom() {
   dom.sunGain = document.getElementById('sG');
   dom.sunGainVal = document.getElementById('sGV');
   dom.toolBtns = Array.from(dom.edToolbar.querySelectorAll('.tb'));
+
+  // Advanced tuning
+  dom.advToggle = document.getElementById('advToggle');
+  dom.advancedRow = document.getElementById('advancedRow');
+  dom.adCool = document.getElementById('adCool');
+  dom.adCoolV = document.getElementById('adCoolV');
+  dom.adDrag = document.getElementById('adDrag');
+  dom.adDragV = document.getElementById('adDragV');
+  dom.adYouth = document.getElementById('adYouth');
+  dom.adYouthV = document.getElementById('adYouthV');
+  dom.adDifBase = document.getElementById('adDifBase');
+  dom.adDifBaseV = document.getElementById('adDifBaseV');
+  dom.adDifGrow = document.getElementById('adDifGrow');
+  dom.adDifGrowV = document.getElementById('adDifGrowV');
+  dom.adWallDist = document.getElementById('adWallDist');
+  dom.adWallDistV = document.getElementById('adWallDistV');
+  dom.adTimeMul = document.getElementById('adTimeMul');
+  dom.adTimeMulV = document.getElementById('adTimeMulV');
+  dom.adAdiab = document.getElementById('adAdiab');
 }

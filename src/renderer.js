@@ -99,6 +99,33 @@ export function drawAcUnit(ctx, wall, pos, label, unitSide) {
   ctx.textBaseline = 'alphabetic';
 }
 
+export function drawCeilingAcUnit(ctx, cx, cy, label) {
+  const px = OX + mToP(cx), py = OY + mToP(cy);
+  const sz = 36; // square size in pixels
+  const half = sz / 2;
+
+  // Main body — square with rounded corners
+  ctx.fillStyle = '#f0f0f0'; ctx.strokeStyle = '#888'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.roundRect(px - half, py - half, sz, sz, 5); ctx.fill(); ctx.stroke();
+
+  // 4 vent lines (outlets in each direction)
+  ctx.strokeStyle = '#aaa'; ctx.lineWidth = 1;
+  const inset = 6, vLen = sz - inset * 2;
+  // top vent
+  ctx.beginPath(); ctx.moveTo(px - vLen/2, py - half + inset); ctx.lineTo(px + vLen/2, py - half + inset); ctx.stroke();
+  // bottom vent
+  ctx.beginPath(); ctx.moveTo(px - vLen/2, py + half - inset); ctx.lineTo(px + vLen/2, py + half - inset); ctx.stroke();
+  // left vent
+  ctx.beginPath(); ctx.moveTo(px - half + inset, py - vLen/2); ctx.lineTo(px - half + inset, py + vLen/2); ctx.stroke();
+  // right vent
+  ctx.beginPath(); ctx.moveTo(px + half - inset, py - vLen/2); ctx.lineTo(px + half - inset, py + vLen/2); ctx.stroke();
+
+  // Label
+  ctx.fillStyle = '#666'; ctx.font = '7px DM Sans'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(label || 'AC', px, py);
+  ctx.textBaseline = 'alphabetic';
+}
+
 // ── Side Label (South/West) ──
 
 function drawSideLabel(ctx, side, label, color) {
@@ -268,9 +295,13 @@ export function drawEditor() {
 
   // AC units
   scene.acUnits.forEach((u, i) => {
-    const w = scene.walls[u.wi];
-    if (!w) return;
-    drawAcUnit(ctx, w, u.pos, String(i + 1), u.side);
+    if (u.ceiling) {
+      drawCeilingAcUnit(ctx, u.cx, u.cy, String(i + 1));
+    } else {
+      const w = scene.walls[u.wi];
+      if (!w) return;
+      drawAcUnit(ctx, w, u.pos, String(i + 1), u.side);
+    }
   });
 
   // AC preview (ghost) when AC tool active
@@ -413,40 +444,57 @@ function drawAcCones(ctx) {
   scene.acUnits.forEach((u, ui) => {
     if (!u.on) return;
     const m = AC_MODELS[u.model];
-    const w = scene.walls[u.wi];
-    if (!w) return;
-    const isH = wallDir(w) === 'h';
-    const wx1 = OX + mToP(w.x1), wy1 = OY + mToP(w.y1);
-    const wx2 = OX + mToP(w.x2), wy2 = OY + mToP(w.y2);
-    const ax = wx1 + u.pos * (wx2 - wx1), ay = wy1 + u.pos * (wy2 - wy1);
-
-    // Determine base angle from wall normal — use stored side if available
-    let ba;
-    if (u.side != null) {
-      if (isH) ba = u.side > 0 ? Math.PI / 2 : -Math.PI / 2;
-      else ba = u.side > 0 ? 0 : Math.PI;
-    } else {
-      const bb = allBoundingBox();
-      if (isH) ba = bb && w.y1 < bb.y + bb.h / 2 ? Math.PI / 2 : -Math.PI / 2;
-      else ba = bb && w.x1 < bb.x + bb.w / 2 ? 0 : Math.PI;
-    }
-
     const pw = Math.max(sim.unitPower[ui], .2);
     const tmVal = +dom.targetMult.value / 100;
     const tpx = m.thrust * PPM * pw * tmVal;
-    const dr = +dom.direction.value * Math.PI / 180;
-    const ha = (+dom.spreadWidth.value / 2) * Math.PI / 180;
-    const ea = ba + dr;
 
-    ctx.strokeStyle = 'rgba(32,100,200,.08)'; ctx.lineWidth = .5;
-    ctx.beginPath(); ctx.arc(ax, ay, tpx, ea - ha, ea + ha); ctx.stroke();
-    ctx.strokeStyle = 'rgba(10,94,70,.2)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
-    ctx.beginPath();
-    ctx.moveTo(ax, ay); ctx.lineTo(ax + Math.cos(ea + ha) * 45, ay + Math.sin(ea + ha) * 45);
-    ctx.moveTo(ax, ay); ctx.lineTo(ax + Math.cos(ea - ha) * 45, ay + Math.sin(ea - ha) * 45);
-    ctx.stroke(); ctx.setLineDash([]);
+    if (u.ceiling) {
+      // Ceiling cassette: 4 directional cones
+      const ax = OX + mToP(u.cx), ay = OY + mToP(u.cy);
+      const ha = 50 * Math.PI / 180; // ±50°
+      const baseAngles = [0, Math.PI / 2, Math.PI, 3 * Math.PI / 2];
+      ctx.strokeStyle = 'rgba(32,100,200,.06)'; ctx.lineWidth = .5;
+      for (const ba of baseAngles) {
+        ctx.beginPath(); ctx.arc(ax, ay, tpx, ba - ha, ba + ha); ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(10,94,70,.15)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      for (const ba of baseAngles) {
+        ctx.moveTo(ax, ay); ctx.lineTo(ax + Math.cos(ba + ha) * 35, ay + Math.sin(ba + ha) * 35);
+        ctx.moveTo(ax, ay); ctx.lineTo(ax + Math.cos(ba - ha) * 35, ay + Math.sin(ba - ha) * 35);
+      }
+      ctx.stroke(); ctx.setLineDash([]);
+      drawCeilingAcUnit(ctx, u.cx, u.cy, String(ui + 1));
+    } else {
+      // Wall unit: existing logic
+      const w = scene.walls[u.wi];
+      if (!w) return;
+      const isH = wallDir(w) === 'h';
+      const wx1 = OX + mToP(w.x1), wy1 = OY + mToP(w.y1);
+      const wx2 = OX + mToP(w.x2), wy2 = OY + mToP(w.y2);
+      const ax = wx1 + u.pos * (wx2 - wx1), ay = wy1 + u.pos * (wy2 - wy1);
+      let ba;
+      if (u.side != null) {
+        if (isH) ba = u.side > 0 ? Math.PI / 2 : -Math.PI / 2;
+        else ba = u.side > 0 ? 0 : Math.PI;
+      } else {
+        const bb = allBoundingBox();
+        if (isH) ba = bb && w.y1 < bb.y + bb.h / 2 ? Math.PI / 2 : -Math.PI / 2;
+        else ba = bb && w.x1 < bb.x + bb.w / 2 ? 0 : Math.PI;
+      }
+      const dr = +dom.direction.value * Math.PI / 180;
+      const ha = (+dom.spreadWidth.value / 2) * Math.PI / 180;
+      const ea = ba + dr;
 
-    drawAcUnit(ctx, w, u.pos, String(ui + 1), u.side);
+      ctx.strokeStyle = 'rgba(32,100,200,.08)'; ctx.lineWidth = .5;
+      ctx.beginPath(); ctx.arc(ax, ay, tpx, ea - ha, ea + ha); ctx.stroke();
+      ctx.strokeStyle = 'rgba(10,94,70,.2)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(ax, ay); ctx.lineTo(ax + Math.cos(ea + ha) * 45, ay + Math.sin(ea + ha) * 45);
+      ctx.moveTo(ax, ay); ctx.lineTo(ax + Math.cos(ea - ha) * 45, ay + Math.sin(ea - ha) * 45);
+      ctx.stroke(); ctx.setLineDash([]);
+      drawAcUnit(ctx, w, u.pos, String(ui + 1), u.side);
+    }
   });
 }
 
